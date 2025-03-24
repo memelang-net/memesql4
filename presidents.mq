@@ -1,0 +1,497 @@
+birthee=GeorgeWashington event=birth year==1732 country=USA state=Virginia
+deathee=GeorgeWashington deathyear==1799
+officer=GeorgeWashington office=President jurisdiction=USA elected=adyear==1789 party=Independent termlength==8
+employee=GeorgeWashington profession=surveyor
+employee=GeorgeWashington profession=planter
+officer=GeorgeWashington office=militaryOfficer jurisdiction=USA
+spouse=GeorgeWashington spouse=MarthaWashington
+birthee=JohnAdams event=birth year==1735 country=USA state=Massachusetts
+deathee=JohnAdams deathyear==1826
+officer=JohnAdams office=President jurisdiction=USA elected=adyear==1796 officeOrder==2 party=Federalist termlength==4
+student=JohnAdams college=Harvard
+employee=JohnAdams profession=lawyer
+officer=JohnAdams office=diplomat jurisdiction=USA
+spouse=JohnAdams spouse=AbigailAdams
+parent=JohnAdams child=AbigailAdamsSmith
+parent=JohnAdams child=JohnQuincyAdams
+parent=JohnAdams child=CharlesAdams
+parent=JohnAdams child=ThomasBoylstonAdams
+birthee=ThomasJefferson event=birth year==1743 country=USA state=Virginia
+deathee=ThomasJefferson deathyear==1826
+party=DemocraticRepublican officer=ThomasJefferson office=President jurisdiction=USA elected=adyear==1800 termlength==8
+student=ThomasJefferson college=WilliamAndMary
+employee=ThomasJefferson profession=lawyer
+employee=ThomasJefferson profession=planter
+officer=ThomasJefferson office=diplomat jurisdiction=USA
+officer=ThomasJefferson office=governor jurisdiction=Virginia
+spouse=ThomasJefferson spouse=MarthaWaylesSkeltonJefferson
+parent=ThomasJefferson child=MarthaJeffersonRandolph
+parent=ThomasJefferson child=MaryJeffersonEppes
+parent=ThomasJefferson child=LucyElizabethJefferson
+birthee=JamesMadison event=birth year==1751 country=USA state=Virginia
+deathee=JamesMadison deathyear==1836
+party=DemocraticRepublican officer=JamesMadison office=President jurisdiction=USA elected=adyear==1808 termlength==8
+student=JamesMadison college=Princeton
+employee=JamesMadison profession=planter
+employee=JamesMadison profession=lawyer
+officer=JamesMadison office=secretaryOfState jurisdiction=USA
+spouse=JamesMadison spouse=DolleyMadison
+birthee=JamesMonroe event=birth year==1758 country=USA state=Virginia
+deathee=JamesMonroe deathyear==1831
+party=DemocraticRepublican officer=JamesMonroe office=President jurisdiction=USA elected=adyear==1816 termlength==8
+student=JamesMonroe college=WilliamAndMary
+employee=JamesMonroe profession=lawyer
+employee=JamesMonroe profession=planter
+officer=JamesMonroe office=diplomat jurisdiction=USA
+officer=JamesMonroe office=governor jurisdiction=Virginia
+spouse=JamesMonroe spouse=ElizabethKortrightMonroe
+parent=JamesMonroe child=ElizaMonroeHay
+parent=JamesMonroe child=JamesMonroeJr
+birthee=JohnQuincyAdams event=birth year==1767 country=USA state=Massachusetts
+deathee=JohnQuincyAdams deathyear==1848
+party=DemocraticRepublican officer=JohnQuincyAdams office=President jurisdiction=USA elected=adyear==1824 termlength==4
+student=JohnQuincyAdams college=Harvard
+officer=JohnQuincyAdams office=diplomat jurisdiction=USA
+officer=JohnQuincyAdams office=senate jurisdiction=USA
+officer=JohnQuincyAdams office=secretaryOfState jurisdiction=USA
+spouse=JohnQuincyAdams spouse=LouisaCatherineJohnsonAdams
+parent=JohnQuincyAdams child=GeorgeWashingtonAdams
+parent=JohnQuincyAdams child=JohnAdamsIii
+parent=JohnQuincyAdams child=CharlesFrancisAdams
+parent=JohnQuincyAdams child=BrooksAdams
+birthee=AndrewJackson event=birth year==1767 country=USA state=SouthCarolina
+deathee=AndrewJackson deathyear==1845
+party=Democratic officer=AndrewJackson office=President jurisdiction=USA elected=adyear==1828 termlength==8
+employee=AndrewJackson profession=lawyer
+employee=AndrewJackson profession=planter
+officer=AndrewJackson office=militaryOfficer jurisdiction=USA
+officer=AndrewJackson office=senate jurisdiction=USA
+spouse=AndrewJackson spouse=RachelDonelsonJackson
+birthee=MartinVanBuren event=birth year==1782 country=USA state=NewYork
+deathee=MartinVanBuren deathyear==1862
+party=Democratic officer=MartinVanBuren office=President jurisdiction=USA elected=adyear==1836 termlength==4
+employee=MartinVanBuren profession=lawyer
+officer=MartinVanBuren office=senate jurisdiction=USA
+officer=MartinVanBuren office=governor jurisdiction=NewYork
+spouse=MartinVanBuren spouse=HannahHoesVanBuren
+parent=MartinVanBuren child=AbrahamVanBuren
+parent=MartinVanBuren child=JohnVanBuren
+parent=MartinVanBuren child=MartinVanBurenJr
+parent=MartinVanBuren child=AndJamesVanBuren
+birthee=WilliamHarrison event=birth year==1773 country=USA state=Virginia
+deathee=WilliamHarrison deathyear==1841
+party=Whig officer=WilliamHarrison office=President jurisdiction=USA elected=adyear==1840 termlength==1
+student=WilliamHarrison college=HampdenSydney
+officer=WilliamHarrison office=militaryOfficer jurisdiction=USA
+officer=WilliamHarrison office=diplomat jurisdiction=USA
+officer=WilliamHarrison office=governor jurisdiction=Indiana
+spouse=WilliamHarrison spouse=AnnaTuthillSymmesHarrison
+parent=WilliamHarrison child=ElizabethHarrison
+parent=WilliamHarrison child=JohnScottHarrison
+parent=WilliamHarrison child=LucyHarrison
+parent=WilliamHarrison child=WilliamHenryHarrison
+parent=WilliamHarrison child=BenjaminHarrisonJr
+birthee=JohnTyler event=birth year==1790 country=USA state=Virginia
+deathee=JohnTyler deathyear==1862
+party=Whig officer=JohnTyler office=President jurisdiction=USA elected=adyear==1841 termlength==3
+student=JohnTyler college=WilliamAndMary
+employee=JohnTyler profession=lawyer
+officer=JohnTyler office=senate jurisdiction=USA
+officer=JohnTyler office=governor jurisdiction=Virginia
+spouse=JohnTyler spouse=LetitiaChristianTyler
+spouse=JohnTyler spouse=JuliaGardinerTyler
+parent=JohnTyler child=DavidGardinerTyler
+parent=JohnTyler child=JohnAlexanderTyler
+parent=JohnTyler child=MaryTyler
+parent=JohnTyler child=RobertTyler
+parent=JohnTyler child=JohnTylerJr
+parent=JohnTyler child=LetitiaTyler
+parent=JohnTyler child=ElizabethTyler
+parent=JohnTyler child=AnnaTyler
+parent=JohnTyler child=AugustaTyler
+parent=JohnTyler child=LyonGardinerTyler
+parent=JohnTyler child=PearlTyler
+birthee=JamesPolk event=birth year==1795 country=USA state=NorthCarolina
+deathee=JamesPolk deathyear==1849
+party=Democratic officer=JamesPolk office=President jurisdiction=USA elected=adyear==1844 termlength==4
+student=JamesPolk college=ChapelHill
+employee=JamesPolk profession=lawyer
+officer=JamesPolk office=congress jurisdiction=USA
+officer=JamesPolk office=governor jurisdiction=Tennessee
+spouse=JamesPolk spouse=SarahChildressPolk
+birthee=ZacharyTaylor event=birth year==1784 country=USA state=Virginia
+deathee=ZacharyTaylor deathyear==1850
+party=Whig officer=ZacharyTaylor office=President jurisdiction=USA elected=adyear==1848 termlength==1
+officer=ZacharyTaylor office=militaryOfficer jurisdiction=USA
+spouse=ZacharyTaylor spouse=MargaretMackallSmithTaylor
+parent=ZacharyTaylor child=AnnMackallTaylor
+parent=ZacharyTaylor child=SarahKnoxTaylor
+parent=ZacharyTaylor child=OctaviaPannillTaylor
+parent=ZacharyTaylor child=MargaretSmithTaylor
+parent=ZacharyTaylor child=MaryElizabethTaylor
+parent=ZacharyTaylor child=RichardScottTaylor
+birthee=MillardFillmore event=birth year==1800 country=USA state=NewYork
+deathee=MillardFillmore deathyear==1874
+party=Whig officer=MillardFillmore office=President jurisdiction=USA elected=adyear==1850 termlength==3
+employee=MillardFillmore profession=lawyer
+officer=MillardFillmore office=congress jurisdiction=USA
+officer=MillardFillmore office=stateComptroller jurisdiction=NewYork
+spouse=MillardFillmore spouse=AbigailPowersFillmore
+parent=MillardFillmore child=MillardFillmoreJr
+parent=MillardFillmore child=MaryAbigailFillmore
+birthee=FranklinPierce event=birth year==1804 country=USA state=NewHampshire
+deathee=FranklinPierce deathyear==1869
+party=Democratic officer=FranklinPierce office=President jurisdiction=USA elected=adyear==1852 termlength==4
+student=FranklinPierce college=Bowdoin
+employee=FranklinPierce profession=lawyer
+officer=FranklinPierce office=congress jurisdiction=USA
+officer=FranklinPierce office=senate jurisdiction=USA
+officer=FranklinPierce office=militaryOfficer jurisdiction=USA
+spouse=FranklinPierce spouse=JaneMeansAppletonPierce
+parent=FranklinPierce child=FrankRobertPierce
+parent=FranklinPierce child=BenjaminPierce
+birthee=JamesBuchanan event=birth year==1791 country=USA state=Pennsylvania
+deathee=JamesBuchanan deathyear==1868
+party=Democratic officer=JamesBuchanan office=President jurisdiction=USA elected=adyear==1856 termlength==4
+student=JamesBuchanan college=Dickinson
+employee=JamesBuchanan profession=lawyer
+officer=JamesBuchanan office=senate jurisdiction=USA
+officer=JamesBuchanan office=diplomat jurisdiction=USA
+officer=JamesBuchanan office=secretaryOfState jurisdiction=USA
+birthee=AbrahamLincoln event=birth year==1809 country=USA state=Kentucky
+deathee=AbrahamLincoln deathyear==1865
+party=Republican officer=AbrahamLincoln office=President jurisdiction=USA elected=adyear==1860 termlength==4
+employee=AbrahamLincoln profession=lawyer
+officer=AbrahamLincoln office=congress jurisdiction=USA
+officer=AbrahamLincoln office=senate jurisdiction=USA
+officer=AbrahamLincoln office=militaryOfficer jurisdiction=USA
+spouse=AbrahamLincoln spouse=MaryToddLincoln
+parent=AbrahamLincoln child=RobertToddLincoln
+parent=AbrahamLincoln child=EdwardBakerLincoln
+parent=AbrahamLincoln child=WilliamWallaceLincoln
+parent=AbrahamLincoln child=ThomasLincoln
+birthee=AndrewJohnson event=birth year==1808 country=USA state=NorthCarolina
+deathee=AndrewJohnson deathyear==1875
+party=Democratic officer=AndrewJohnson office=President jurisdiction=USA elected=adyear==1865 termlength==3
+employee=AndrewJohnson profession=tailor
+officer=AndrewJohnson office=congress office=USA
+officer=AndrewJohnson office=governor jurisdiction=Tennessee
+officer=AndrewJohnson office=senate office=USA
+spouse=AndrewJohnson spouse=ElizaMccardleJohnson
+parent=AndrewJohnson child=MarthaJohnsonPatterson
+parent=AndrewJohnson child=CharlesJohnson
+parent=AndrewJohnson child=AndrewJohnsonJr
+parent=AndrewJohnson child=RobertJohnson
+parent=AndrewJohnson child=AndWilliamJohnson
+birthee=UlyssesGrant event=birth year==1822 country=USA state=Ohio
+deathee=UlyssesGrant deathyear==1885
+party=Republican officer=UlyssesGrant office=President jurisdiction=USA elected=adyear==1868 termlength==8
+student=UlyssesGrant college=WestPoint
+officer=UlyssesGrant office=militaryOfficer jurisdiction=USA
+spouse=UlyssesGrant spouse=JuliaDentGrant
+parent=UlyssesGrant child=FrederickDentGrant
+parent=UlyssesGrant child=UlyssesSimpsonGrant
+parent=UlyssesGrant child=JesseRootGrant
+parent=UlyssesGrant child=EllenWrenshallGrant
+birthee=RutherfordHayes event=birth year==1822 country=USA state=Ohio
+deathee=RutherfordHayes deathyear==1893
+party=Republican officer=RutherfordHayes office=President jurisdiction=USA elected=adyear==1876 termlength==4
+student=RutherfordHayes college=Kenyon
+student=RutherfordHayes college=Harvard
+employee=RutherfordHayes profession=lawyer
+officer=RutherfordHayes office=congress jurisdiction=USA
+officer=RutherfordHayes office=governor jurisdiction=Ohio
+spouse=RutherfordHayes spouse=LucyWebbHayes
+parent=RutherfordHayes child=SardisBirchardHayes
+parent=RutherfordHayes child=JamesWebbCookHayes
+parent=RutherfordHayes child=RutherfordPlattHayes
+parent=RutherfordHayes child=JosephThompsonHayes
+parent=RutherfordHayes child=GeorgeCrookHayes
+parent=RutherfordHayes child=FannyHayes
+parent=RutherfordHayes child=ScottRussellHayes
+parent=RutherfordHayes child=ManningForceHayes
+birthee=JamesGarfield event=birth year==1831 country=USA state=Ohio
+deathee=JamesGarfield deathyear==1881
+party=Republican officer=JamesGarfield office=President jurisdiction=USA elected=adyear==1880 termlength==0.66
+student=JamesGarfield college=Williams
+officer=JamesGarfield office=militaryOfficer jurisdiction=USA
+officer=JamesGarfield office=congress jurisdiction=USA
+spouse=JamesGarfield spouse=LucretiaRudolphGarfield
+parent=JamesGarfield child=HarryAugustusGarfield
+parent=JamesGarfield child=JamesRudolphGarfield
+parent=JamesGarfield child=MaryGarfield
+parent=JamesGarfield child=IrvinMcdowellGarfield
+parent=JamesGarfield child=AndEdwardGarfield
+birthee=ChesterArthur event=birth year==1829 country=USA state=Vermont
+deathee=ChesterArthur deathyear==1886
+party=Republican officer=ChesterArthur office=President jurisdiction=USA elected=adyear==1881 termlength==4
+student=ChesterArthur college=Union
+employee=ChesterArthur profession=lawyer
+officer=ChesterArthur office=portCustomsCollector jurisdiction=NewYork
+spouse=ChesterArthur spouse=EllenLewisHerndonArthur
+parent=ChesterArthur child=WilliamArthur
+parent=ChesterArthur child=ChesterAlanArthur
+birthee=GroverCleveland event=birth year==1837 country=USA state=NewJersey
+deathee=GroverCleveland deathyear==1908
+party=Democratic officer=GroverCleveland office=President jurisdiction=USA elected=adyear==1884 termlength==8
+student=GroverCleveland college=Princeton
+employee=GroverCleveland profession=lawyer
+officer=GroverCleveland office=mayor city=buffalo
+officer=GroverCleveland office=governor jurisdiction=NewYork
+spouse=GroverCleveland spouse=FrancesFolsomCleveland
+parent=GroverCleveland child=RuthCleveland
+parent=GroverCleveland child=EstherCleveland
+parent=GroverCleveland child=MarionCleveland
+parent=GroverCleveland child=RichardFolsomCleveland
+parent=GroverCleveland child=AndFrancisCleveland
+birthee=BenjaminHarrison event=birth year==1833 country=USA state=Ohio
+deathee=BenjaminHarrison deathyear==1901
+party=Republican officer=BenjaminHarrison office=President jurisdiction=USA elected=adyear==1888 termlength==4
+student=BenjaminHarrison college=Miami
+employee=BenjaminHarrison profession=lawyer
+officer=BenjaminHarrison office=senate jurisdiction=USA
+officer=BenjaminHarrison office=militaryOfficer jurisdiction=USA
+spouse=BenjaminHarrison spouse=LaviniaScottHarrison
+parent=BenjaminHarrison child=RussellBenjaminHarrison
+parent=BenjaminHarrison child=MaryScottHarrison
+parent=BenjaminHarrison child=AndElizabethHarrison
+birthee=WilliamMckinley event=birth year==1843 country=USA state=Ohio
+deathee=WilliamMckinley deathyear==1901
+party=Republican officer=WilliamMckinley office=President jurisdiction=USA elected=adyear==1896 termlength==4
+student=WilliamMckinley college=Allegheny
+employee=WilliamMckinley profession=lawyer
+officer=WilliamMckinley office=congress jurisdiction=USA
+officer=WilliamMckinley office=governor jurisdiction=Ohio
+spouse=WilliamMckinley spouse=IdaSaxtonMckinley
+parent=WilliamMckinley child=KatherineMckinley
+parent=WilliamMckinley child=IdaMckinley
+birthee=TheodoreRoosevelt event=birth year==1858 country=USA state=NewYork
+deathee=TheodoreRoosevelt deathyear==1919
+party=Republican officer=TheodoreRoosevelt office=President jurisdiction=USA elected=adyear==1904 termlength==8
+student=TheodoreRoosevelt college=Harvard
+employee=TheodoreRoosevelt profession=author
+officer=TheodoreRoosevelt office=militaryOfficer jurisdiction=USA
+officer=TheodoreRoosevelt office=congress jurisdiction=USA
+officer=TheodoreRoosevelt office=governor jurisdiction=NewYork
+spouse=TheodoreRoosevelt spouse=AliceHathawayLeeRoosevelt
+spouse=TheodoreRoosevelt spouse=EdithKermitCarow
+parent=TheodoreRoosevelt child=AliceLeeRoosevelt
+parent=TheodoreRoosevelt child=TheodoreRooseveltJr
+parent=TheodoreRoosevelt child=KermitRoosevelt
+parent=TheodoreRoosevelt child=EthelRoosevelt
+parent=TheodoreRoosevelt child=AndQuentinRoosevelt
+birthee=WilliamTaft event=birth year==1857 country=USA state=Ohio
+deathee=WilliamTaft deathyear==1930
+party=Republican officer=WilliamTaft office=President jurisdiction=USA elected=adyear==1908 termlength==4
+student=WilliamTaft college=Yale
+student=WilliamTaft college=UniversityOfCincinnati
+employee=WilliamTaft profession=lawyer
+officer=WilliamTaft office=solicitorGeneral jurisdiction=USA
+employee=WilliamTaft profession=judge
+officer=WilliamTaft office=governorGeneral jurisdiction=Philippines
+officer=WilliamTaft office=SecretaryOfWar jurisdiction=USA
+spouse=WilliamTaft spouse=HelenHerronTaft
+parent=WilliamTaft child=RobertTaft
+parent=WilliamTaft child=HelenTaftManning
+parent=WilliamTaft child=CharlesPhelpsTaft
+birthee=WoodrowWilson event=birth year==1856 country=USA state=Virginia
+deathee=WoodrowWilson deathyear==1924
+party=Democratic officer=WoodrowWilson office=President jurisdiction=USA elected=adyear==1912 termlength==8
+student=WoodrowWilson college=Princeton
+student=WoodrowWilson college=UniversityOfVirginia
+employee=WoodrowWilson profession=academic
+employee=WoodrowWilson profession=universityPresident employer=Princeton
+officer=WoodrowWilson office=governor jurisdiction=NewJersey
+spouse=WoodrowWilson spouse=EllenLouiseAxson
+spouse=WoodrowWilson spouse=EdithWilson
+parent=WoodrowWilson child=MargaretWoodrowWilson
+parent=WoodrowWilson child=JessieWilsonSayre
+parent=WoodrowWilson child=EleanorWilsonMcadoo
+birthee=WarrenHarding event=birth year==1865 country=USA state=Ohio
+deathee=WarrenHarding deathyear==1923
+party=Republican officer=WarrenHarding office=President jurisdiction=USA elected=adyear==1920 termlength==2
+student=WarrenHarding college=OhioCentral
+employee=WarrenHarding profession=newspaperPublisher
+officer=WarrenHarding office=senate jurisdiction=USA
+spouse=WarrenHarding spouse=FlorenceKlingHarding
+parent=WarrenHarding child=ElizabethHarding
+birthee=CalvinCoolidge event=birth year==1872 country=USA state=Vermont
+deathee=CalvinCoolidge deathyear==1933
+party=Republican officer=CalvinCoolidge office=President jurisdiction=USA elected=adyear==1924 termlength==6
+student=CalvinCoolidge college=Amherst
+employee=CalvinCoolidge profession=lawyer
+officer=CalvinCoolidge office=governor jurisdiction=Massachusetts
+officer=CalvinCoolidge office=VicePresident jurisdiction=USA
+spouse=CalvinCoolidge spouse=GraceAnnaGoodhueCoolidge
+parent=CalvinCoolidge child=JohnCoolidge
+parent=CalvinCoolidge child=CalvinCoolidgeJr
+parent=CalvinCoolidge child=AndADaughter
+parent=CalvinCoolidge child=ElizabethCoolidge
+birthee=HerbertHoover event=birth year==1874 country=USA state=Iowa
+deathee=HerbertHoover deathyear==1964
+party=Republican officer=HerbertHoover office=President jurisdiction=USA elected=adyear==1928 termlength==4
+student=HerbertHoover college=Stanford
+employee=HerbertHoover profession=engineer
+employee=HerbertHoover profession=miningExecutive
+officer=HerbertHoover office=secretaryOfCommerce jurisdiction=USA
+spouse=HerbertHoover spouse=LouHenryHoover
+parent=HerbertHoover child=HerbertHooverJr
+parent=HerbertHoover child=AllanHoover
+birthee=FranklinRoosevelt event=birth year==1882 country=USA state=NewYork
+deathee=FranklinRoosevelt deathyear==1945
+party=Democratic officer=FranklinRoosevelt office=President jurisdiction=USA elected=adyear==1932 termlength==12
+student=FranklinRoosevelt college=Harvard
+employee=FranklinRoosevelt profession=lawyer
+officer=FranklinRoosevelt office=governor jurisdiction=NewYork
+officer=FranklinRoosevelt office=assistantSecretaryOfTheNavy jurisdiction=USA
+spouse=FranklinRoosevelt spouse=EleanorRoosevelt
+parent=FranklinRoosevelt child=AnnaRoosevelt
+parent=FranklinRoosevelt child=JamesRoosevelt
+parent=FranklinRoosevelt child=ElliottRoosevelt
+parent=FranklinRoosevelt child=FranklinDRoosevelt
+parent=FranklinRoosevelt child=JohnRoosevelt
+parent=FranklinRoosevelt child=AndPatriciaRoosevelt
+birthee=HarryTruman event=birth year==1884 country=USA state=Missouri
+deathee=HarryTruman deathyear==1972
+party=Democratic officer=HarryTruman office=President jurisdiction=USA elected=adyear==1948 termlength==8
+employee=HarryTruman profession=farmer
+employee=HarryTruman profession=clerk
+officer=HarryTruman office=senate jurisdiction=USA
+officer=HarryTruman office=VicePresident jurisdiction=USA
+spouse=HarryTruman spouse=BessTruman
+parent=HarryTruman child=MargaretTruman
+birthee=DwightEisenhower event=birth year==1890 country=USA state=Texas
+deathee=DwightEisenhower deathyear==1969
+party=Republican officer=DwightEisenhower office=President jurisdiction=USA elected=adyear==1952 termlength==8
+student=DwightEisenhower college=WestPoint
+officer=DwightEisenhower office=militaryOfficer jurisdiction=USA
+employee=DwightEisenhower profession=supremeAlliedCommander
+spouse=DwightEisenhower spouse=MamieEisenhower
+parent=DwightEisenhower child=DoudEisenhower
+parent=DwightEisenhower child=JohnEisenhower
+parent=DwightEisenhower child=EdgarEisenhower
+birthee=JohnKennedy event=birth year==1917 country=USA state=Massachusetts
+deathee=JohnKennedy deathyear==1963
+party=Democratic officer=JohnKennedy office=President jurisdiction=USA elected=adyear==1960 termlength==3
+student=JohnKennedy college=Harvard
+officer=JohnKennedy office=senate jurisdiction=USA
+officer=JohnKennedy office=congress jurisdiction=USA
+officer=JohnKennedy office=militaryOfficer jurisdiction=USA
+spouse=JohnKennedy spouse=JacquelineKennedyOnassis
+parent=JohnKennedy child=CarolineKennedy
+parent=JohnKennedy child=JohnFKennedy
+parent=JohnKennedy child=PatrickBouvierKennedy
+birthee=LyndonJohnson event=birth year==1908 country=USA state=Texas
+deathee=LyndonJohnson deathyear==1973
+party=Democratic officer=LyndonJohnson office=President jurisdiction=USA elected=adyear==1964 termlength==5
+student=LyndonJohnson college=SouthwestTexasStateTeachers
+officer=LyndonJohnson office=senate jurisdiction=USA
+officer=LyndonJohnson office=congress jurisdiction=USA
+officer=LyndonJohnson office=VicePresident jurisdiction=USA
+spouse=LyndonJohnson spouse=LadyBirdJohnson
+parent=LyndonJohnson child=LyndaBirdJohnson
+parent=LyndonJohnson child=LuciBainesJohnson
+birthee=RichardNixon event=birth year==1913 country=USA state=California
+deathee=RichardNixon deathyear==1994
+party=Republican officer=RichardNixon office=President jurisdiction=USA elected=adyear==1968 termlength==5
+student=RichardNixon college=Whittier
+student=RichardNixon college=Duke
+officer=RichardNixon office=congress jurisdiction=USA
+officer=RichardNixon office=senate jurisdiction=USA
+officer=RichardNixon office=VicePresident jurisdiction=USA
+spouse=RichardNixon spouse=PatNixon
+parent=RichardNixon child=TriciaNixonCox
+parent=RichardNixon child=JulieNixonEisenhower
+birthee=GeraldFord event=birth year==1913 country=USA state=Nebraska
+deathee=GeraldFord deathyear=ad==2006
+party=Republican officer=GeraldFord office=President jurisdiction=USA elected=adyear==1974 termlength==2
+student=GeraldFord college=UniversityOfMichigan
+student=GeraldFord college=Yale
+officer=GeraldFord office=congress jurisdiction=USA
+officer=GeraldFord office=VicePresident jurisdiction=USA
+spouse=GeraldFord spouse=BettyFord
+parent=GeraldFord child=MichaelFord
+parent=GeraldFord child=JohnFord
+parent=GeraldFord child=StevenFord
+parent=GeraldFord child=SUSAnFord
+birthee=JamesCarter event=birth year==1924 country=USA state=Georgia
+party=Democratic officer=JamesCarter office=President jurisdiction=USA elected=adyear==1976 termlength==4
+student=JamesCarter college=USANavalAcademy
+officer=JamesCarter office=governor jurisdiction=Georgia
+officer=JamesCarter office=militaryOfficer jurisdiction=USA
+spouse=JamesCarter spouse=RosalynnCarter
+parent=JamesCarter child=JohnWilliamCarter
+parent=JamesCarter child=JamesEarlCarter
+parent=JamesCarter child=AmyCarter
+birthee=RonaldReagan event=birth year==1911 country=USA state=Illinois
+deathee=RonaldReagan deathyear=ad==2004
+party=Republican officer=RonaldReagan office=President jurisdiction=USA elected=adyear==1980 termlength==8
+student=RonaldReagan college=Eureka
+employee=RonaldReagan profession=actor
+officer=RonaldReagan office=governor jurisdiction=California
+spouse=RonaldReagan spouse=NancyReagan
+parent=RonaldReagan child=MaureenReagan
+parent=RonaldReagan child=MichaelReagan
+parent=RonaldReagan child=PattiDavis
+parent=RonaldReagan child=RonReagan
+birthee=GeorgeHWBush event=birth year==1924 country=USA state=Massachusetts
+deathee=GeorgeHWBush deathyear=ad==2018
+party=Republican officer=GeorgeHWBush office=President jurisdiction=USA elected=adyear==1988 termlength==4
+student=GeorgeHWBush college=Yale
+officer=GeorgeHWBush office=congress jurisdiction=USA
+officer=GeorgeHWBush office=ciaDirector jurisdiction=USA
+officer=GeorgeHWBush office=VicePresident jurisdiction=USA
+spouse=GeorgeHWBush spouse=BarbaraBush
+parent=GeorgeHWBush child=GeorgeWBush
+parent=GeorgeHWBush child=JebBush
+parent=GeorgeHWBush child=NeilBush
+parent=GeorgeHWBush child=MarvinBush
+parent=GeorgeHWBush child=DorothyBushKoch
+birthee=WilliamClinton event=birth year==1946 country=USA state=Arkansas
+party=Democratic officer=WilliamClinton office=President jurisdiction=USA elected=adyear==1992 termlength==8
+student=WilliamClinton college=Georgetown
+student=WilliamClinton college=Oxford
+student=WilliamClinton college=Yale
+officer=WilliamClinton office=governor jurisdiction=Arkansas
+officer=WilliamClinton office=attorneyGeneral jurisdiction=Arkansas
+spouse=WilliamClinton spouse=HillaryClinton
+parent=WilliamClinton child=ChelseaClinton
+birthee=GeorgeWBush event=birth year==1946 country=USA state=Connecticut
+party=Republican officer=GeorgeWBush office=President jurisdiction=USA elected=adyear==2000 termlength==8
+student=GeorgeWBush college=Yale
+student=GeorgeWBush college=Harvard
+officer=GeorgeWBush office=governor jurisdiction=Texas
+employee=GeorgeWBush profession=businessman
+employee=GeorgeWBush profession=airman employer=AirForceReserve
+spouse=GeorgeWBush spouse=LauraBush
+parent=GeorgeWBush child=JennaBushHager
+parent=GeorgeWBush child=BarbaraBush
+birthee=BarackObama event=birth year==1961 country=USA state=Hawaii
+party=Democratic officer=BarackObama office=President jurisdiction=USA elected=adyear==2008 termlength==8
+student=BarackObama college=Occidental
+student=BarackObama college=Columbia
+student=BarackObama college=Harvard
+officer=BarackObama office=senate jurisdiction=USA
+officer=BarackObama office=stateSenate jurisdiction=Illinois
+employee=BarackObama profession=lawyer
+spouse=BarackObama spouse=MichelleObama
+parent=BarackObama child=MaliaObama
+parent=BarackObama child=SashaObama
+birthee=DonaldTrump event=birth year==1946 country=USA state=NewYork
+party=Republican officer=DonaldTrump office=President jurisdiction=USA elected=adyear==2016 termlength==4
+student=DonaldTrump college=UniversityOfPennsylvania
+parent=DonaldTrump child=DonaldTrumpJr
+parent=DonaldTrump child=IvankaTrump
+parent=DonaldTrump child=EricTrump
+parent=DonaldTrump child=TiffanyTrump
+parent=DonaldTrump child=BarronTrump
+birthee=JosephBiden event=birth year==1942 country=USA state=Pennsylvania
+party=Democratic officer=JosephBiden office=President jurisdiction=USA elected=adyear==2020 termlength==4
+student=JosephBiden college=UniversityOfDelaware
+student=JosephBiden college=Syracuse
+officer=JosephBiden office=senate jurisdiction=USA
+officer=JosephBiden office=VicePresident jurisdiction=USA
+spouse=JosephBiden spouse=JillBiden
+parent=JosephBiden child=BeauBiden
+parent=JosephBiden child=HunterBiden
+parent=JosephBiden child=AshleyBiden
