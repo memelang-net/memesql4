@@ -48,7 +48,7 @@ FUNC, CLMN, TIER, OBEG, OEND = 0, 1, 2, 3, 4
 TERM, TAND, TFWD, TREV, TIMP, TEND = 0, 1, 2, 3, 4, 5
 VV, XO, XV, YO, YV = 0, 1, 2, 3, 4
 VALS, OPRS = (XV, YV), (XO, YO)
-MYV = 1
+MLV = 1
 TLEN = 5
 
 OPR = { # Each operator and its meaning
@@ -145,15 +145,15 @@ def decode(memestr: str) -> list:
 					if completeness==INCOMPLETE: raise Exception(f"Invalid strtok {strtok}")
 
 				if OPR[operator][TIER] >= TAND:
-					if terms[VV]==MYV: expressions.append(terms)
+					if terms[VV]==MLV: expressions.append(terms)
 					terms = [None, operator, None, None, None]
 					if OPR[operator][TIER] >= TFWD:
-						terms[VV]=MYV
+						terms[VV]=MLV
 						if OPR[operator][TIER] >= TIMP:
 							if expressions: statements.append(expressions)
 							expressions = []
 				else:
-					terms[VV]=MYV
+					terms[VV]=MLV
 					terms[OPR[operator][FUNC]]=operator
 
 			# Key/Integer/Decimal
@@ -168,11 +168,11 @@ def decode(memestr: str) -> list:
 					strtok=float(strtok)
 
 				terms[OPR[operator][FUNC]+1]=strtok
-				terms[VV]=MYV
+				terms[VV]=MLV
 
 			t+=1
 
-	if terms[VV]==MYV: expressions.append(terms)
+	if terms[VV]==MLV: expressions.append(terms)
 	if expressions: statements.append(expressions)
 
 	normalize(statements)
@@ -198,7 +198,7 @@ def normalize(statements: list[list]):
 	for s, expressions in enumerate(statements):
 		for e, terms in enumerate(expressions):
 			if len(terms)!=TLEN: raise Exception(f"Term count error for at {s}:{e}")
-			if terms[VV]!=MYV: raise Exception(f"Unkown term version at {s}:{e}")
+			if terms[VV]!=MLV: raise Exception(f"Unkown term version at {s}:{e}")
 
 			# Clean all
 			for t in range(TLEN):
