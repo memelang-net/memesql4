@@ -694,8 +694,8 @@ if __name__ == "__main__":
 	elif cmd == 'reinstall':
 		cli_tabledel()
 		cli_tableadd()
-		if len(sys.argv)>2 and sys.argv[2]=='-presidents': cli_putfile(os.path.join(LOCAL_DIR,'presidents.mq'))
+		if len(sys.argv)>2 and sys.argv[2]=='-presidents': cli_putfile(os.path.join(LOCAL_DIR,'presidents.meme'))
 	elif cmd in ('fileall','allfile'):
-		files = glob.glob(LOCAL_DIR+'/*.mq') + glob.glob(LOCAL_DIR+'/data/*.mq')
+		files = glob.glob(LOCAL_DIR+'/*.meme') + glob.glob(LOCAL_DIR+'/data/*.meme')
 		for f in files: cli_putfile(f)
 	else: sys.exit("Invalid command")
