@@ -35,7 +35,7 @@ I = {
 	'nam' : 2**9 + 0,
 	'key' : 2**9 + 1,
 	'tit' : 2**9 + 2,
-	'cor' : 2**30
+	'cor' : 2**29
 }
 
 # Lazy population for now
@@ -63,7 +63,7 @@ OPR = { # Each operator and its meaning
 	I['=']   : [YO, AID, TERM, False, False],
 
 	I['="'] : [YO, ALP, TERM, False, '"'],
-	I['==']  : [YO, AMT, TERM, False, False],
+	I['==']  : [YO, AMT, TERM, '=', False],
 	I['>']   : [YO, AMT, TERM, False, False],
 	I['<']   : [YO, AMT, TERM, False, False],
 	I['>=']  : [YO, AMT, TERM, False, False],
@@ -113,6 +113,7 @@ def decode(memestr: str) -> list:
 			terms[YO], terms[YV] = I['="'], part
 			continue
 
+		part = re.sub(r'\s*\\\s*', ' ', part)			# Backslah is same line
 		part = re.sub(r'[;\n]+', ';', part)				# Newlines are semicolons
 		part = re.sub(r'\s+', ' ', part)				# Remove multiple spaces
 		part = re.sub(r'\s+(?=[\]\[&])', '', part)		# Remove spaces before operators
@@ -161,11 +162,20 @@ def decode(memestr: str) -> list:
 				if operator is None: raise Exception(f'Sequence error at {strtok}')
 				if re.search(r'[^a-zA-Z0-9\.\-]', strtok): raise Exception(f"Unexpected '{strtok}' in {memestr}")
 
-				# R=123.4 to R==123.4
-				if ('.' in strtok or strtok.startswith('-')) and operator==I['=']:
-					operator=I['==']
-					terms[OPR[operator][FUNC]]=operator
-					strtok=float(strtok)
+				elif OPR[operator][FUNC]==XO:
+					if strtok.isdigit(): strtok=int(strtok)
+
+				elif OPR[operator][FUNC]==YO:
+					# R=a1234
+					if re.fullmatch(r'a[0-9]+', strtok):
+						strtok=int(strtok[1:])
+
+					# R=1234
+					elif (re.search(r'[0-9]', strtok) and not re.search(r'[a-zA-Z]', strtok)):
+						strtok=float(strtok)
+						if operator==I['=']:
+							operator=I['==']
+							terms[YO]=operator
 
 				terms[OPR[operator][FUNC]+1]=strtok
 				terms[VV]=MLV
@@ -373,7 +383,7 @@ def selectify(expressions: list[list], gids: list[int] = []) -> tuple[str, list]
 	where 	= f"n{n}.gid={gid}"
 	groupby = f"n{n}.bid"
 	join    = ''
-	select  = ''
+	select  = "';'"
 	params 	= []
 
 	for terms in expressions:
@@ -391,9 +401,9 @@ def selectify(expressions: list[list], gids: list[int] = []) -> tuple[str, list]
 		elif tier == TAND:
 			n+=1
 			bb.append(n)
-			join	+= f" JOIN {tbl} n{bb[-1]} ON n{aa[-1]}.bid=n{bb[-1]}.bid"
+			join += f" JOIN {tbl} n{bb[-1]} ON n{aa[-1]}.bid=n{bb[-1]}.bid"
 			if acol == AID:
-				where   += f" AND (n{aa[-1]}.aid!=n{bb[-1]}.aid OR n{aa[-1]}.rid!=n{bb[-1]}.rid)"
+				where += f" AND (n{aa[-1]}.aid!=n{bb[-1]}.aid OR n{aa[-1]}.rid!=n{bb[-1]}.rid)"
 
 		elif tier == TFWD:
 			n+=1
@@ -412,8 +422,9 @@ def selectify(expressions: list[list], gids: list[int] = []) -> tuple[str, list]
 			where += f" AND n{n}.rid=%s"
 			params.append(terms[XV])
 
+
 		if acol == AID:
-			select 	+= f", string_agg(DISTINCT '{K[terms[XO]]}' || n{n}.rid || '=' || n{n}.aid, '')"
+			select 	+= f", string_agg(DISTINCT ' ' || n{n}.rid || '=a' || n{n}.aid, '')"
 			if terms[YV] is not None:
 				where += f" AND n{n}.aid=%s"
 				params.append(terms[YV])
@@ -432,8 +443,14 @@ def selectify(expressions: list[list], gids: list[int] = []) -> tuple[str, list]
 				where += f" AND n{n}.amt{cpr}%s"
 				params.append(terms[YV])
 
+		if terms[XV] is None and terms[YV] is None:
+			n+=1
+			select 	+= f", ' ', string_agg(DISTINCT n{n}.rid || '==' || n{n}.amt, '')"
+			join += f" JOIN numb n{n} ON n{aa[-1]}.bid=n{n}.bid"
 
-	return f"SELECT CONCAT({select[1:]}) AS raq {join} WHERE {where} GROUP BY {groupby}", params
+
+
+	return f"SELECT CONCAT({select}) AS raq {join} WHERE {where} GROUP BY {groupby}", params
 
 
 # Input: Memelang query string
@@ -450,14 +467,13 @@ def querify(statements: list[list], gids: list[int] = []) -> tuple[str, list]:
 # Input: Memelang string
 # Saves to DB
 # Output: Memelang string
-def put (memestr: str, gids: list[int] = []) -> str:
+def put (memestr: str, gid: int) -> str:
 	
-	if not gids: gids = [GID]
-	gid = gids[-1]
+	if not gid: raise Exception('put gid')
 	if gid not in KEYS: KEYS[gid]={}
 
 	statements = decode(memestr)
-	maxid = aggnum('bid', 'MAX', DB['table_node']) or I['cor']
+	seqid = select("SELECT nextval(%s)", [DB['table_seqn']])[0][0]-1
 
 	sqls = {DB['table_node']:[], DB['table_name']:[], DB['table_numb']:[]}
 	params = {DB['table_node']:[], DB['table_name']:[], DB['table_numb']:[]}
@@ -495,12 +511,12 @@ def put (memestr: str, gids: list[int] = []) -> str:
 			alp = l2u[alpl]
 
 			if re.search(r'[^a-zA-Z0-9]', alpl) or not re.search(r'[a-zA-Z]', alpl):
-				raise Exception(f'Invalid key {alpl}')
+				raise Exception(f'Invalid key at {alpl}')
 
 			aid = newkeys[alpl]
 			if not aid:
-				maxid += 1
-				aid = maxid
+				seqid += 1
+				aid = seqid
 			elif aid<=I['cor']: raise Exception(f'Invalid id number {aid}')
 
 			KEYS[gid][alp]=aid
@@ -508,22 +524,25 @@ def put (memestr: str, gids: list[int] = []) -> str:
 			params[DB['table_name']].extend([gid, aid, I['key'], alp])
 
 		# Swap missing keys for new IDs
-		identify(statements, gids)
+		identify(statements, [gid])
 	
 	# NEW MEMES
 	for s, expressions in enumerate(statements):
-		maxid+=1
+		seqid+=1
 		for e, terms in enumerate(expressions):
 			col = OPR[terms[YO]][CLMN]
 			if col == AID: tbl = DB['table_node']
 			elif col == AMT: tbl = DB['table_numb']
 			elif col == ALP: tbl = DB['table_name']
 			else: raise Exception
-			params[tbl].extend([gid, maxid, terms[XV], terms[YV]])
+			params[tbl].extend([gid, seqid, terms[XV], terms[YV]])
 			sqls[tbl].append('(%s,%s,%s,%s)')
 
 	for tbl in params:
-		if params[tbl]: insert(f"INSERT INTO {tbl} VALUES " + ','.join(sqls[tbl]) + " ON CONFLICT DO NOTHING", params[tbl])
+		if params[tbl]: 
+			insert(f"INSERT INTO {tbl} VALUES " + ','.join(sqls[tbl]) + " ON CONFLICT DO NOTHING", params[tbl])
+
+	select(f"SELECT setval(%s, %s, true)", [DB['table_seqn'], seqid])
 
 	return keyencode(statements, [gid])
 
@@ -552,6 +571,18 @@ def count(memestr: str, gids: list[int] = []) -> int:
 	return len(select(sql, params))
 
 
+def wipe(gid: int):
+	if not gid: raise Exception('wipe gid')
+	for tbl in (DB['table_node'], DB['table_numb'], DB['table_name']):
+		insert("DELETE FROM {tbl} WHERE gid=%s",[gid])
+
+
+def psql(sql: str, db: str = DB['name']):
+	command = f"sudo -u postgres psql -d {db} -c \"{sql}\""
+	print(command)
+	os.system(command)
+
+
 ###############################################################################
 #                                  CLI
 ###############################################################################
@@ -563,7 +594,7 @@ def cli_sql(qry_sql):
 
 
 # Execute and output a Memelang query
-def cli_query(memestr):
+def cli_query(memestr: str):
 	tokens = decode(memestr)
 	print ("TOKENS:", tokens)
 	print ("QUERY:", encode(tokens))
@@ -579,10 +610,14 @@ def cli_query(memestr):
 	print()
 	print()
 
+def cli_put(memestr: str):
+	print(put(memestr, 1073743544))
+	print()
+	print()
 
 # Read a meme file and save it to DB
 def cli_putfile(file_path):
-	with open(file_path, 'r', encoding='utf-8') as f: print(put(f.read()))
+	with open(file_path, 'r', encoding='utf-8') as f: print(put(f.read(), GID))
 	
 
 # Test various Memelang queries
@@ -644,7 +679,6 @@ def cli_dbadd():
 		f"sudo -u postgres psql -c \"CREATE USER {DB['user']} WITH PASSWORD '{DB['pass']}'; GRANT ALL PRIVILEGES ON DATABASE {DB['name']} to {DB['user']};\"",
 		f"sudo -u postgres psql -c \"GRANT ALL PRIVILEGES ON DATABASE {DB['name']} to {DB['user']};\""
 	]
-
 	for command in commands:
 		print(command)
 		os.system(command)
@@ -652,30 +686,30 @@ def cli_dbadd():
 
 # Add database table
 def cli_tableadd():
+	corp=I['cor']+1
 	commands = [
-		f"sudo -u postgres psql -d {DB['name']} -c \"CREATE TABLE {DB['table_node']} (gid BIGINT, bid BIGINT, rid BIGINT, aid BIGINT, PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_node']}_rid_idx ON {DB['table_node']} USING hash (rid); CREATE INDEX {DB['table_node']}_aid_idx ON {DB['table_node']} USING hash (aid);\"",
-		f"sudo -u postgres psql -d {DB['name']} -c \"CREATE TABLE {DB['table_numb']} (gid BIGINT, bid BIGINT, rid BIGINT, amt DOUBLE PRECISION, PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_numb']}_rid_idx ON {DB['table_numb']} USING hash (rid); CREATE INDEX {DB['table_numb']}_amt_idx ON {DB['table_numb']} (amt);\"",
-		f"sudo -u postgres psql -d {DB['name']} -c \"CREATE TABLE {DB['table_name']} (gid BIGINT, bid BIGINT, rid BIGINT, alp VARCHAR(511), PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_name']}_rid_idx ON {DB['table_name']} USING hash (rid); CREATE UNIQUE INDEX {DB['table_name']}_amt_idx ON {DB['table_name']} (LOWER(alp));\"",
-		f"sudo -u postgres psql -d {DB['name']} -c \"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {DB['table_node']} TO {DB['user']};\"",
-		f"sudo -u postgres psql -d {DB['name']} -c \"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {DB['table_numb']} TO {DB['user']};\"",
-		f"sudo -u postgres psql -d {DB['name']} -c \"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {DB['table_name']} TO {DB['user']};\"",
+		f"CREATE SEQUENCE {DB['table_seqn']} AS BIGINT START {corp} INCREMENT 1 CACHE 1;",
+		f"CREATE TABLE {DB['table_node']} (gid BIGINT, bid BIGINT, rid BIGINT, aid BIGINT, PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_node']}_rid_idx ON {DB['table_node']} USING hash (rid); CREATE INDEX {DB['table_node']}_aid_idx ON {DB['table_node']} USING hash (aid);",
+		f"CREATE TABLE {DB['table_numb']} (gid BIGINT, bid BIGINT, rid BIGINT, amt DOUBLE PRECISION, PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_numb']}_rid_idx ON {DB['table_numb']} USING hash (rid); CREATE INDEX {DB['table_numb']}_amt_idx ON {DB['table_numb']} (amt);",
+		f"CREATE TABLE {DB['table_name']} (gid BIGINT, bid BIGINT, rid BIGINT, alp VARCHAR(511), PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_name']}_rid_idx ON {DB['table_name']} USING hash (rid); CREATE INDEX {DB['table_name']}_alp_idx ON {DB['table_name']} (LOWER(alp));",
+		f"GRANT USAGE, UPDATE ON SEQUENCE {DB['table_seqn']} TO {DB['user']};",
+		f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {DB['table_node']} TO {DB['user']};",
+		f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {DB['table_numb']} TO {DB['user']};",
+		f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {DB['table_name']} TO {DB['user']};",
 	]
 
-	for command in commands:
-		print(command)
-		os.system(command)
+	for command in commands: psql(command)
 
 
 # Delete database table
 def cli_tabledel():
 	commands = [
-		f"sudo -u postgres psql -d {DB['name']} -c \"DROP TABLE {DB['table_node']};\"",
-		f"sudo -u postgres psql -d {DB['name']} -c \"DROP TABLE {DB['table_numb']};\"",
-		f"sudo -u postgres psql -d {DB['name']} -c \"DROP TABLE {DB['table_name']};\"",
+		f"DROP SEQUENCE {DB['table_seqn']};",
+		f"DROP TABLE {DB['table_node']};",
+		f"DROP TABLE {DB['table_numb']};",
+		f"DROP TABLE {DB['table_name']};",
 	]
-	for command in commands:
-		print(command)
-		os.system(command)
+	for command in commands: psql(command)
 
 if __name__ == "__main__":
 	LOCAL_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -683,6 +717,7 @@ if __name__ == "__main__":
 	cmd = sys.argv[1]
 	if cmd == 'sql': cli_sql(sys.argv[2])
 	elif cmd in ('query','qry','q','get','g'): cli_query(sys.argv[2])
+	elif cmd == 'put': cli_put(sys.argv[2])
 	elif cmd in ('file','import'): cli_putfile(sys.argv[2])
 	elif cmd in ('dbadd','adddb'): cli_dbadd()
 	elif cmd in ('tableadd','addtable'): cli_tableadd()
