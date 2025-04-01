@@ -5,6 +5,7 @@ import os
 import re
 import glob
 import psycopg2
+from psycopg2.pool import SimpleConnectionPool
 from conf import DB
 
 
@@ -46,10 +47,8 @@ TBL = {RID: DB['table_node'], AID: DB['table_node'], AMT: DB['table_numb'], ALP:
 
 FUNC, CLMN, TIER, OBEG, OEND = 0, 1, 2, 3, 4
 TERM, TAND, TFWD, TREV, TIMP, TEND = 0, 1, 2, 3, 4, 5
-VV, XO, XV, YO, YV = 0, 1, 2, 3, 4
+XO, XV, YO, YV, TLEN = 0, 1, 2, 3, 4
 VALS, OPRS = (XV, YV), (XO, YO)
-MLV = 1
-TLEN = 5
 
 OPR = { # Each operator and its meaning
 	None     : [None, None, None, None, None],
@@ -102,7 +101,7 @@ def decode(memestr: str) -> list:
 	if len(memestr) == 0: raise Exception("Empty query provided.")
 
 	statements, expressions = [], []
-	terms = [None, None, None, None, None]
+	terms = [None, None, None, None]
 	operator = None
 
 	parts = re.split(r'(?<!\\)"', ';'+memestr)
@@ -146,16 +145,13 @@ def decode(memestr: str) -> list:
 					if completeness==INCOMPLETE: raise Exception(f"Invalid strtok {strtok}")
 
 				if OPR[operator][TIER] >= TAND:
-					if terms[VV]==MLV: expressions.append(terms)
-					terms = [None, operator, None, None, None]
+					if terms[XV] or terms[YV] or terms[YO]: expressions.append(terms)
+					terms = [operator, None, None, None]
 					if OPR[operator][TIER] >= TFWD:
-						terms[VV]=MLV
 						if OPR[operator][TIER] >= TIMP:
 							if expressions: statements.append(expressions)
 							expressions = []
-				else:
-					terms[VV]=MLV
-					terms[OPR[operator][FUNC]]=operator
+				else: terms[OPR[operator][FUNC]]=operator
 
 			# Key/Integer/Decimal
 			else:
@@ -178,11 +174,10 @@ def decode(memestr: str) -> list:
 							terms[YO]=operator
 
 				terms[OPR[operator][FUNC]+1]=strtok
-				terms[VV]=MLV
 
 			t+=1
 
-	if terms[VV]==MLV: expressions.append(terms)
+	if terms[XV] or terms[YV] or terms[YO]: expressions.append(terms)
 	if expressions: statements.append(expressions)
 
 	normalize(statements)
@@ -208,7 +203,6 @@ def normalize(statements: list[list]):
 	for s, expressions in enumerate(statements):
 		for e, terms in enumerate(expressions):
 			if len(terms)!=TLEN: raise Exception(f"Term count error for at {s}:{e}")
-			if terms[VV]!=MLV: raise Exception(f"Unkown term version at {s}:{e}")
 
 			# Clean all
 			for t in range(TLEN):
@@ -238,24 +232,60 @@ def normalize(statements: list[list]):
 #                        DATABASE HELPER FUNCTIONS
 ###############################################################################
 
+pool = SimpleConnectionPool(
+	minconn=1,
+	maxconn=5,
+	host=DB['host'],
+	database=DB['name'],
+	user=DB['user'],
+	password=DB['pass']
+)
+
 def select(sql: str, params: list = []) -> list:
-	with psycopg2.connect(f"host={DB['host']} dbname={DB['name']} user={DB['user']} password={DB['pass']}") as conn:
-		cursor = conn.cursor()
-		cursor.execute(sql, params)
-		rows=cursor.fetchall()
-		return [list(row) for row in rows]
+	conn = pool.getconn()
+	cursor = conn.cursor()
+	cursor.execute(sql, params)
+	rows=cursor.fetchall()
+	pool.putconn(conn)
+	return [list(row) for row in rows]
 
 
 def insert(sql: str, params: list = []):
-	with psycopg2.connect(f"host={DB['host']} dbname={DB['name']} user={DB['user']} password={DB['pass']}") as conn:
-		cursor = conn.cursor()
-		cursor.execute(sql, params)
+	conn = pool.getconn()
+
+	try:
+		with conn.cursor() as cursor:
+			cursor.execute(sql, params)
+			conn.commit()
+	except Exception as e:
+		conn.rollback()
+		raise e
+	finally:
+		pool.putconn(conn)
+
+def inreturn(sql: str, params: list = []):
+	conn = pool.getconn()
+
+	try:
+		with conn.cursor() as cursor:
+			cursor.execute(sql, params)
+			conn.commit()
+			row = cursor.fetchone()
+			return row[0] if row else None
+	except Exception as e:
+		conn.rollback()
+		raise e
+	finally:
+		pool.putconn(conn)
 
 
 def aggnum(col: str = 'aid', agg: str = 'MAX', table: str = None) -> int:
 	if not table: table=DB['table_node']
-	result = select(f"SELECT {agg}({col}) FROM {table}")
-	return int(0 if not result or not result[0] or not result[0][0] else result[0][0])
+	conn = pool.getconn()
+	cursor = conn.cursor()
+	cursor.execute(f"SELECT {agg}({col}) FROM {table}")
+	pool.putconn(conn)
+	return int(cursor.fetchone()[0])
 
 
 def selectin(cols: dict = {}, table: str = None) -> list:
@@ -269,8 +299,35 @@ def selectin(cols: dict = {}, table: str = None) -> list:
 
 	if not conds: return []
 
-	return select(f"SELECT DISTINCT * FROM {table} WHERE " + ' AND '.join(conds), params)
+	conn = pool.getconn()
+	cursor = conn.cursor()
+	cursor.execute(f"SELECT DISTINCT * FROM {table} WHERE " + ' AND '.join(conds), params)
+	rows=cursor.fetchall()
+	pool.putconn(conn)
+	return [list(row) for row in rows]
 
+
+def seqinc(seqn: str = None) -> int:
+	if not seqn: seqn=DB['table_seqn']
+	conn = pool.getconn()
+	try:
+		with conn.cursor() as cursor:
+			cursor.execute(f"SELECT nextval('{seqn}')")
+			inc = int(cursor.fetchone()[0])
+			conn.commit()
+	except Exception as e:
+		conn.rollback()
+		raise e
+	finally:
+		pool.putconn(conn)
+
+	return inc
+
+
+def psql(sql: str, db: str = DB['name']):
+	command = f"sudo -u postgres psql -d {db} -c \"{sql}\""
+	print(command)
+	os.system(command)
 
 # Conbine SQL and parameters into a string
 def morfigy(sql: str, params: list) -> str:
@@ -385,6 +442,8 @@ def selectify(expressions: list[list], gids: list[int] = []) -> tuple[str, list]
 	join    = ''
 	select  = "';'"
 	params 	= []
+	acol    = None
+	aacol   = None
 
 	for terms in expressions:
 		tier = OPR[terms[XO]][TIER]
@@ -397,21 +456,22 @@ def selectify(expressions: list[list], gids: list[int] = []) -> tuple[str, list]
 
 		if tier == TEND:
 			join 	+= f' FROM {tbl} n{n}'
+			aacol   = acol
 
 		elif tier == TAND:
 			n+=1
 			bb.append(n)
-			join += f" JOIN {tbl} n{bb[-1]} ON n{aa[-1]}.bid=n{bb[-1]}.bid"
-			if acol == AID:
-				where += f" AND (n{aa[-1]}.aid!=n{bb[-1]}.aid OR n{aa[-1]}.rid!=n{bb[-1]}.rid)"
+			join += f" LEFT JOIN {tbl} n{bb[-1]} ON n{aa[-1]}.bid=n{bb[-1]}.bid"
+			if acol == AID and aacol == AID:
+				join += f" AND (n{aa[-1]}.aid!=n{bb[-1]}.aid OR n{aa[-1]}.rid!=n{bb[-1]}.rid)"
 
 		elif tier == TFWD:
 			n+=1
 			aa.append(n)
 			bb.append(n)
-			join	+= f" JOIN {tbl} n{bb[-1]} ON n{bb[-2]}.aid=n{bb[-1]}.aid"
-			where	+= f" AND n{bb[-1]}.gid={gid} AND n{bb[-2]}.bid!=n{bb[-1]}.bid"
-			groupby += f", n{bb[-1]}.rid, n{bb[-1]}.bid"
+			join	+= f" JOIN {tbl} n{bb[-1]} ON n{bb[-2]}.aid=n{bb[-1]}.aid AND n{bb[-1]}.gid={gid} AND n{bb[-2]}.bid!=n{bb[-1]}.bid"
+			groupby += f", n{bb[-1]}.aid, n{bb[-1]}.rid, n{bb[-1]}.bid"
+			aacol    = acol
 
 		elif tier == TREV:
 			select	+= ", ']'"
@@ -428,27 +488,24 @@ def selectify(expressions: list[list], gids: list[int] = []) -> tuple[str, list]
 			if terms[YV] is not None:
 				where += f" AND n{n}.aid=%s"
 				params.append(terms[YV])
-				groupby += f", n{n}.rid, n{n}.aid"
 
 		elif acol == ALP:
-			select 	+= f", ' ', string_agg(DISTINCT n{n}.rid || '=\"' || n{n}.alp || '\"', '')"
+			select 	+= f", string_agg(DISTINCT ' ' || n{n}.rid || '=\"' || n{n}.alp || '\"', '')"
 			if terms[YV] is not None:
 				where += f" AND LOWER(n{n}.alp) LIKE %s"
 				params.append(terms[YV].lower())
 
 		elif acol == AMT: 
-			select 	+= f", ' ', string_agg(DISTINCT n{n}.rid || '==' || n{n}.amt, '')"
+			select 	+= f", string_agg(DISTINCT ' ' || n{n}.rid || '==' || n{n}.amt, '')"
 			if terms[YV] is not None:
 				cpr = '=' if terms[YO] == I['=='] else K[terms[YO]]
 				where += f" AND n{n}.amt{cpr}%s"
 				params.append(terms[YV])
 
-		if terms[XV] is None and terms[YV] is None:
+		if aacol!=AMT and terms[XV] is None and terms[YV] is None:
 			n+=1
-			select 	+= f", ' ', string_agg(DISTINCT n{n}.rid || '==' || n{n}.amt, '')"
-			join += f" JOIN numb n{n} ON n{aa[-1]}.bid=n{n}.bid"
-
-
+			select 	+= f", string_agg(DISTINCT ' ' || n{n}.rid || '==' || n{n}.amt, '')"
+			join += f" LEFT JOIN {DB['table_numb']} n{n} ON n{aa[-1]}.bid=n{n}.bid"
 
 	return f"SELECT CONCAT({select}) AS raq {join} WHERE {where} GROUP BY {groupby}", params
 
@@ -473,7 +530,6 @@ def put (memestr: str, gid: int) -> str:
 	if gid not in KEYS: KEYS[gid]={}
 
 	statements = decode(memestr)
-	seqid = select("SELECT nextval(%s)", [DB['table_seqn']])[0][0]-1
 
 	sqls = {DB['table_node']:[], DB['table_name']:[], DB['table_numb']:[]}
 	params = {DB['table_node']:[], DB['table_name']:[], DB['table_numb']:[]}
@@ -486,9 +542,10 @@ def put (memestr: str, gid: int) -> str:
 	for s, expressions in enumerate(statements):
 		for e, terms in enumerate(expressions):
 			for t in VALS:
+				if terms[t] is None: raise Exception(f'Invalid null {terms}')
 				if isinstance(terms[t], str):
 					if iid := KEYS[gid].get(terms[t]): statements[s][e][t]=iid
-					elif re.search(r'[^a-zA-Z0-9]', terms[t]): raise Exception(f'Invalid key {terms[t]}')
+					elif re.search(r'[^a-zA-Z0-9]', terms[t]): raise Exception(f'Invalid key {terms[t]} in {terms}')
 					else: 
 						alp = slugify(terms[t])
 						alpl = alp.lower()
@@ -514,9 +571,7 @@ def put (memestr: str, gid: int) -> str:
 				raise Exception(f'Invalid key at {alpl}')
 
 			aid = newkeys[alpl]
-			if not aid:
-				seqid += 1
-				aid = seqid
+			if not aid: aid = seqinc()
 			elif aid<=I['cor']: raise Exception(f'Invalid id number {aid}')
 
 			KEYS[gid][alp]=aid
@@ -528,21 +583,19 @@ def put (memestr: str, gid: int) -> str:
 	
 	# NEW MEMES
 	for s, expressions in enumerate(statements):
-		seqid+=1
+		bid = seqinc()
 		for e, terms in enumerate(expressions):
 			col = OPR[terms[YO]][CLMN]
 			if col == AID: tbl = DB['table_node']
 			elif col == AMT: tbl = DB['table_numb']
 			elif col == ALP: tbl = DB['table_name']
-			else: raise Exception
-			params[tbl].extend([gid, seqid, terms[XV], terms[YV]])
+			else: raise Exception('put col')
+			params[tbl].extend([gid, bid, terms[XV], terms[YV]])
 			sqls[tbl].append('(%s,%s,%s,%s)')
 
 	for tbl in params:
 		if params[tbl]: 
 			insert(f"INSERT INTO {tbl} VALUES " + ','.join(sqls[tbl]) + " ON CONFLICT DO NOTHING", params[tbl])
-
-	select(f"SELECT setval(%s, %s, true)", [DB['table_seqn'], seqid])
 
 	return keyencode(statements, [gid])
 
@@ -574,13 +627,7 @@ def count(memestr: str, gids: list[int] = []) -> int:
 def wipe(gid: int):
 	if not gid: raise Exception('wipe gid')
 	for tbl in (DB['table_node'], DB['table_numb'], DB['table_name']):
-		insert("DELETE FROM {tbl} WHERE gid=%s",[gid])
-
-
-def psql(sql: str, db: str = DB['name']):
-	command = f"sudo -u postgres psql -d {db} -c \"{sql}\""
-	print(command)
-	os.system(command)
+		insert(f"DELETE FROM {tbl} WHERE gid=%s",[gid])
 
 
 ###############################################################################
@@ -611,7 +658,7 @@ def cli_query(memestr: str):
 	print()
 
 def cli_put(memestr: str):
-	print(put(memestr, 1073743544))
+	print(put(memestr, GID))
 	print()
 	print()
 
@@ -689,6 +736,7 @@ def cli_tableadd():
 	corp=I['cor']+1
 	commands = [
 		f"CREATE SEQUENCE {DB['table_seqn']} AS BIGINT START {corp} INCREMENT 1 CACHE 1;",
+		f"SELECT setval('{DB['table_seqn']}', {corp}, false);",
 		f"CREATE TABLE {DB['table_node']} (gid BIGINT, bid BIGINT, rid BIGINT, aid BIGINT, PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_node']}_rid_idx ON {DB['table_node']} USING hash (rid); CREATE INDEX {DB['table_node']}_aid_idx ON {DB['table_node']} USING hash (aid);",
 		f"CREATE TABLE {DB['table_numb']} (gid BIGINT, bid BIGINT, rid BIGINT, amt DOUBLE PRECISION, PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_numb']}_rid_idx ON {DB['table_numb']} USING hash (rid); CREATE INDEX {DB['table_numb']}_amt_idx ON {DB['table_numb']} (amt);",
 		f"CREATE TABLE {DB['table_name']} (gid BIGINT, bid BIGINT, rid BIGINT, alp VARCHAR(511), PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_name']}_rid_idx ON {DB['table_name']} USING hash (rid); CREATE INDEX {DB['table_name']}_alp_idx ON {DB['table_name']} (LOWER(alp));",
@@ -705,9 +753,9 @@ def cli_tableadd():
 def cli_tabledel():
 	commands = [
 		f"DROP SEQUENCE {DB['table_seqn']};",
-		f"DROP TABLE {DB['table_node']};",
-		f"DROP TABLE {DB['table_numb']};",
-		f"DROP TABLE {DB['table_name']};",
+		f"DROP TABLE IF EXISTS {DB['table_node']};",
+		f"DROP TABLE IF EXISTS {DB['table_numb']};",
+		f"DROP TABLE IF EXISTS {DB['table_name']};",
 	]
 	for command in commands: psql(command)
 
