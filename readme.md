@@ -1,10 +1,10 @@
 # memesql4
 
-This is prototype Python/Postgres implementation of [Memelang v4](https://memelang.net/04/). This Python script receives Memelang v4 queries, converts them to SQL, executes them on a Postgres database, then returns results as a Memelang string.
+This is prototype Python/Postgres implementation of [Memelang v4](https://memelang.net/04/). This Python script receives Memelang queries, converts them to SQL, executes them on a Postgres database, then returns results as a Memelang string.
 
 ## Files
 
-* *conf.py* database configurations
+* *db.py* Postgres database configurations and helper functions
 * *memelang.py* library to decode Memelang queries and execute in Postgres
 * *presidents.meme* example Memelang data for the U.S. presidents
 

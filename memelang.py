@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
-import sys
-import os
-import re
-import glob
-import psycopg2
-from psycopg2.pool import SimpleConnectionPool
-from conf import DB
+import sys, os, re, glob, db
+from db import DB
 
+DB['table_seqn']='seqn'
+DB['table_node']='node'
+DB['table_numb']='numb'
+DB['table_name']='name'
 
 ###############################################################################
 #                           CONSTANTS & GLOBALS
@@ -112,7 +111,7 @@ def decode(memestr: str) -> list:
 			terms[YO], terms[YV] = I['="'], part
 			continue
 
-		part = re.sub(r'\s*\\\s*', ' ', part)			# Backslah is same line
+		part = re.sub(r'\s*\\\s*', ' ', part)			# Backslash is same line
 		part = re.sub(r'[;\n]+', ';', part)				# Newlines are semicolons
 		part = re.sub(r'\s+', ' ', part)				# Remove multiple spaces
 		part = re.sub(r'\s+(?=[\]\[&])', '', part)		# Remove spaces before operators
@@ -228,120 +227,6 @@ def normalize(statements: list[list]):
 			statements[s][e]=terms
 
 
-###############################################################################
-#                        DATABASE HELPER FUNCTIONS
-###############################################################################
-
-pool = SimpleConnectionPool(
-	minconn=1,
-	maxconn=5,
-	host=DB['host'],
-	database=DB['name'],
-	user=DB['user'],
-	password=DB['pass']
-)
-
-def select(sql: str, params: list = []) -> list:
-	conn = pool.getconn()
-	cursor = conn.cursor()
-	cursor.execute(sql, params)
-	rows=cursor.fetchall()
-	pool.putconn(conn)
-	return [list(row) for row in rows]
-
-
-def insert(sql: str, params: list = []):
-	conn = pool.getconn()
-
-	try:
-		with conn.cursor() as cursor:
-			cursor.execute(sql, params)
-			conn.commit()
-	except Exception as e:
-		conn.rollback()
-		raise e
-	finally:
-		pool.putconn(conn)
-
-def inreturn(sql: str, params: list = []):
-	conn = pool.getconn()
-
-	try:
-		with conn.cursor() as cursor:
-			cursor.execute(sql, params)
-			conn.commit()
-			row = cursor.fetchone()
-			return row[0] if row else None
-	except Exception as e:
-		conn.rollback()
-		raise e
-	finally:
-		pool.putconn(conn)
-
-
-def aggnum(col: str = 'aid', agg: str = 'MAX', table: str = None) -> int:
-	if not table: table=DB['table_node']
-	conn = pool.getconn()
-	cursor = conn.cursor()
-	cursor.execute(f"SELECT {agg}({col}) FROM {table}")
-	pool.putconn(conn)
-	return int(cursor.fetchone()[0])
-
-
-def selectin(cols: dict = {}, table: str = None) -> list:
-	if not table: table=DB['table_node']
-
-	conds, params = [], []
-
-	for col in cols:
-		conds.append(f"{col} IN ("+ ','.join(['%s'] * len(cols[col])) +")")
-		params.extend(cols[col])
-
-	if not conds: return []
-
-	conn = pool.getconn()
-	cursor = conn.cursor()
-	cursor.execute(f"SELECT DISTINCT * FROM {table} WHERE " + ' AND '.join(conds), params)
-	rows=cursor.fetchall()
-	pool.putconn(conn)
-	return [list(row) for row in rows]
-
-
-def seqinc(seqn: str = None) -> int:
-	if not seqn: seqn=DB['table_seqn']
-	conn = pool.getconn()
-	try:
-		with conn.cursor() as cursor:
-			cursor.execute(f"SELECT nextval('{seqn}')")
-			inc = int(cursor.fetchone()[0])
-			conn.commit()
-	except Exception as e:
-		conn.rollback()
-		raise e
-	finally:
-		pool.putconn(conn)
-
-	return inc
-
-
-def psql(sql: str, db: str = DB['name']):
-	command = f"sudo -u postgres psql -d {db} -c \"{sql}\""
-	print(command)
-	os.system(command)
-
-# Conbine SQL and parameters into a string
-def morfigy(sql: str, params: list) -> str:
-    for param in params:
-        rep = param.replace("'", "''") if isinstance(param, str) else str(param)
-        sql = sql.replace("%s", rep, 1)
-    return sql
-
-
-# Input: string "John Adams"
-# Output: lowercase underscored string "JohnAdams"
-def slugify(string: str) -> str:
-	return re.sub(r'[^a-zA-Z0-9]', '', string)
-
 
 ###############################################################################
 #                           KEY <-> ID CONVERSIONS
@@ -366,7 +251,7 @@ def identify(statements: list[list], gids: list[int] = []):
 				if isinstance(terms[t], str) and not allaids.get(terms[t]): lookups[terms[t].lower()]=1
 
 	if lookups:
-		rows=selectin({f'LOWER({ALP})':lookups.keys(), 'rid':[I['key']], 'gid':gids}, DB['table_name'])
+		rows=db.selectin({f'LOWER({ALP})':lookups.keys(), 'rid':[I['key']], 'gid':gids}, DB['table_name'])
 		for row in rows: KEYS[int(row[0])][row[3]] = int(row[1])
 
 		# must keep gid order
@@ -397,7 +282,7 @@ def keyify(statements: list[list], gids: list[int] = []) -> list:
 				if isinstance(terms[t], int) and not allstrs.get(terms[t]): lookups[terms[t]]=1
 
 	if lookups:
-		rows=selectin({'bid':lookups.keys(), 'rid':[I['key']], 'gid':gids}, DB['table_name'])
+		rows=db.selectin({'bid':lookups.keys(), 'rid':[I['key']], 'gid':gids}, DB['table_name'])
 		for row in rows: KEYS[int(row[0])][row[3]] = int(row[1])
 
 		# must keep gid order
@@ -469,6 +354,7 @@ def selectify(expressions: list[list], gids: list[int] = []) -> tuple[str, list]
 			n+=1
 			aa.append(n)
 			bb.append(n)
+			select	+= f", string_agg(DISTINCT ' ' || n{bb[-2]}.rid || '[' || n{bb[-1]}.rid, '')"
 			join	+= f" JOIN {tbl} n{bb[-1]} ON n{bb[-2]}.aid=n{bb[-1]}.aid AND n{bb[-1]}.gid={gid} AND n{bb[-2]}.bid!=n{bb[-1]}.bid"
 			groupby += f", n{bb[-1]}.aid, n{bb[-1]}.rid, n{bb[-1]}.bid"
 			aacol    = acol
@@ -481,7 +367,6 @@ def selectify(expressions: list[list], gids: list[int] = []) -> tuple[str, list]
 		if terms[XV] is not None:
 			where += f" AND n{n}.rid=%s"
 			params.append(terms[XV])
-
 
 		if acol == AID:
 			select 	+= f", string_agg(DISTINCT ' ' || n{n}.rid || '=a' || n{n}.aid, '')"
@@ -547,7 +432,7 @@ def put (memestr: str, gid: int) -> str:
 					if iid := KEYS[gid].get(terms[t]): statements[s][e][t]=iid
 					elif re.search(r'[^a-zA-Z0-9]', terms[t]): raise Exception(f'Invalid key {terms[t]} in {terms}')
 					else: 
-						alp = slugify(terms[t])
+						alp = db.slugify(terms[t])
 						alpl = alp.lower()
 						if not newkeys.get(alpl):
 							newkeys[alpl] = 0
@@ -555,7 +440,7 @@ def put (memestr: str, gid: int) -> str:
 
 	if newkeys:
 		# Unique check keys
-		rows=selectin({'gid':[gid], 'rid':[I['key']], f'LOWER({ALP})':newkeys.keys()}, DB['table_name'])
+		rows=db.selectin({'gid':[gid], 'rid':[I['key']], f'LOWER({ALP})':newkeys.keys()}, DB['table_name'])
 		for row in rows:
 			alp=row[3]
 			alpl = alp.lower()
@@ -571,7 +456,7 @@ def put (memestr: str, gid: int) -> str:
 				raise Exception(f'Invalid key at {alpl}')
 
 			aid = newkeys[alpl]
-			if not aid: aid = seqinc()
+			if not aid: aid = db.seqinc()
 			elif aid<=I['cor']: raise Exception(f'Invalid id number {aid}')
 
 			KEYS[gid][alp]=aid
@@ -583,7 +468,7 @@ def put (memestr: str, gid: int) -> str:
 	
 	# NEW MEMES
 	for s, expressions in enumerate(statements):
-		bid = seqinc()
+		bid = db.seqinc()
 		for e, terms in enumerate(expressions):
 			col = OPR[terms[YO]][CLMN]
 			if col == AID: tbl = DB['table_node']
@@ -595,7 +480,7 @@ def put (memestr: str, gid: int) -> str:
 
 	for tbl in params:
 		if params[tbl]: 
-			insert(f"INSERT INTO {tbl} VALUES " + ','.join(sqls[tbl]) + " ON CONFLICT DO NOTHING", params[tbl])
+			db.insert(f"INSERT INTO {tbl} VALUES " + ','.join(sqls[tbl]) + " ON CONFLICT DO NOTHING", params[tbl])
 
 	return keyencode(statements, [gid])
 
@@ -606,7 +491,7 @@ def query(memestr: str = None, gids: list[int] = []) -> str:
 	if not gids: gids = [GID]
 
 	sql, params = querify(idecode(memestr, gids), gids)
-	res = select(sql, params)
+	res = db.select(sql, params)
 
 	if not res: return ''
 
@@ -621,13 +506,13 @@ def query(memestr: str = None, gids: list[int] = []) -> str:
 def count(memestr: str, gids: list[int] = []) -> int:
 	if not gids: gids = [GID]
 	sql, params = querify(idecode(memestr, gids), gids)
-	return len(select(sql, params))
+	return len(db.select(sql, params))
 
 
 def wipe(gid: int):
 	if not gid: raise Exception('wipe gid')
 	for tbl in (DB['table_node'], DB['table_numb'], DB['table_name']):
-		insert(f"DELETE FROM {tbl} WHERE gid=%s",[gid])
+		db.insert(f"DELETE FROM {tbl} WHERE gid=%s",[gid])
 
 
 ###############################################################################
@@ -636,7 +521,7 @@ def wipe(gid: int):
 
 # Execute and output an SQL query
 def cli_sql(qry_sql):
-	rows = select(qry_sql, [])
+	rows = db.select(qry_sql, [])
 	for row in rows: print(row)
 
 
@@ -648,7 +533,7 @@ def cli_query(memestr: str):
 
 	tokens = idecode(memestr)
 	sql, params = querify(tokens)
-	full_sql = morfigy(sql, params)
+	full_sql = db.morfigy(sql, params)
 	print(f"SQL: {full_sql}\n")
 
 	# Execute query
@@ -679,7 +564,7 @@ def cli_qrytest():
 		'parent=JOHNadams',
 		'child[birthee',
 		'child[birthee =',
-		'child[birthee year==',
+		'child[birthee year>',
 		'year==1732',
 		'year=1732.0',
 		'year>1700',
@@ -746,7 +631,7 @@ def cli_tableadd():
 		f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {DB['table_name']} TO {DB['user']};",
 	]
 
-	for command in commands: psql(command)
+	for command in commands: db.psql(command)
 
 
 # Delete database table
@@ -757,7 +642,7 @@ def cli_tabledel():
 		f"DROP TABLE IF EXISTS {DB['table_numb']};",
 		f"DROP TABLE IF EXISTS {DB['table_name']};",
 	]
-	for command in commands: psql(command)
+	for command in commands: db.psql(command)
 
 if __name__ == "__main__":
 	LOCAL_DIR = os.path.dirname(os.path.abspath(__file__))
