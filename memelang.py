@@ -24,6 +24,9 @@ I = {
 	'>>'  : 5,
 	';'   : 6,
 
+	'{'   : 7,
+	'}'   : 8,
+
 	'="'  : 10,
 	'=='  : 13,
 	'>'   : 14,
@@ -36,15 +39,6 @@ I = {
 	'key' : 2**9 + 1,
 	'tit' : 2**9 + 2,
 
-	'act' : 2**9 + 3,
-	'get' : 2**9 + 4,
-	'cnt' : 2**9 + 5,
-	'put' : 2**9 + 6,
-	'mod' : 2**9 + 7,
-	'idx' : 2**9 + 8,
-	'del' : 2**9 + 9,
-	'wip' : 2**9 + 10,
-
 	'cor' : 2**29
 }
 
@@ -52,7 +46,7 @@ I = {
 K = {value: key for key, value in I.items()}
 
 RID, BID, AID, AMT, ALP = 'rid', 'bid', 'aid', 'amt', 'alp'
-TBL = {RID: DB['table_node'], AID: DB['table_node'], AMT: DB['table_numb'], ALP: DB['table_name']}
+TBL = {RID: DB['table_node'], BID: DB['table_node'], AID: DB['table_node'], AMT: DB['table_numb'], ALP: DB['table_name']}
 
 FUNC, CLMN, TIER, OBEG, OEND = 0, 1, 2, 3, 4
 TERM, TAND, TFWD, TREV, TIMP, TEND = 0, 1, 2, 3, 4, 5
@@ -65,12 +59,15 @@ OPR = { # Each operator and its meaning
 	I['>>']  : [XO, RID, TIMP, False, False],
 	I[';']   : [XO, RID, TEND,  "\n", False],
 
-	I['[']   : [XO, RID, TFWD, False, False],
+	I['[']   : [XO, RID, TFWD, ' [', False],
 	I[']']   : [XO, RID, TREV, False, False],
+
+	I['{']   : [XO, BID, TERM, False, False],
+	I['}']   : [XO, BID, TERM, False, False],
 
 	I['=']   : [YO, AID, TERM, False, False],
 
-	I['="'] : [YO, ALP, TERM, False, '"'],
+	I['="']  : [YO, ALP, TERM, False, '"'],
 	I['==']  : [YO, AMT, TERM, '=', False],
 	I['>']   : [YO, AMT, TERM, False, False],
 	I['<']   : [YO, AMT, TERM, False, False],
@@ -95,6 +92,8 @@ OPRSTR = {
 	'>>'  : [COMPLETE, I['>>']],
 	'['   : [COMPLETE, I['[']],
 	']'   : [COMPLETE, I[']']],
+	'{'   : [COMPLETE, I['{']],
+	'}'   : [COMPLETE, I['}']],
 }
 
 
@@ -107,7 +106,7 @@ OPRSTR = {
 def decode(memestr: str) -> list:
 
 	memestr = re.sub(r'\s*//.*$', '', memestr, flags=re.MULTILINE).strip() # Remove comments
-	if len(memestr) == 0: raise Exception('api=err fld=qry msg=empty\n')
+	if len(memestr) == 0: raise Exception('api=err fld=qry msg=empty')
 
 	memetoks, expressions = [], []
 	terms = [None, None, None, None]
@@ -129,7 +128,7 @@ def decode(memestr: str) -> list:
 		part = re.sub(r';+$', '', part)					# Remove ending semicolon
 
 		# Split by operator characters
-		strtoks = re.split(r'([\]\[;!><=\s])', part)
+		strtoks = re.split(r'([\]\[\}\{;!><=\s])', part)
 		tlen = len(strtoks)
 		t = 0
 		while t<tlen:
@@ -153,14 +152,16 @@ def decode(memestr: str) -> list:
 							break
 					if completeness==INCOMPLETE: raise Exception(f'api=err fld=strtok msg=invalid val="{strtok}"')
 
-				if OPR[operator][TIER] >= TAND:
-					if terms[XV] or terms[YV] or terms[YO]: expressions.append(terms)
-					terms = [operator, None, None, None]
-					if OPR[operator][TIER] >= TFWD:
-						if OPR[operator][TIER] >= TIMP:
-							if expressions: memetoks.append(expressions)
-							expressions = []
-				else: terms[OPR[operator][FUNC]]=operator
+				func = OPR[operator][FUNC]
+
+				if terms[func] and OPR[terms[func]][FUNC]!=TAND:
+					expressions.append(terms)
+					terms = [None, None, None, None]
+					if OPR[operator][TIER] >= TIMP:
+						if expressions: memetoks.append(expressions)
+						expressions = []
+
+				terms[func]=operator
 
 			# Key/Integer/Decimal
 			else:
@@ -237,7 +238,6 @@ def normalize(memetoks: list[list]):
 			memetoks[s][e]=terms
 
 
-
 ###############################################################################
 #                           KEY <-> ID CONVERSIONS
 ###############################################################################
@@ -269,7 +269,7 @@ def identify(memetoks: list[list], gid: int = GID):
 			for t in VALS:
 				if isinstance(terms[t], str):
 					iid = allaids.get(terms[t].lower(),0)
-					if iid == 0: raise Exception(f"Unknown identifier \"{terms[t]}\" in {terms}")
+					if iid == 0: raise Exception(f"api=err fld=id val=\"{terms[t]}\" msg=notFound")
 					memetoks[s][e][t]=iid
 
 
@@ -283,7 +283,7 @@ def keyify(memetoks: list[list], gid: int = GID) -> list:
 	for s, expressions in enumerate(memetoks):
 		for e, terms in enumerate(expressions):
 			for t in VALS:
-				if isinstance(terms[t], int) and not allstrs.get(terms[t]): lookups[terms[t]]=1
+				if OPR[terms[t-1]][CLMN] in (RID,AID) and isinstance(terms[t], int) and not allstrs.get(terms[t]): lookups[terms[t]]=1
 
 	if lookups:
 		rows=db.selectin({'bid':lookups.keys(), 'rid':[I['key']], 'gid':[gid]}, DB['table_name'])
@@ -293,7 +293,7 @@ def keyify(memetoks: list[list], gid: int = GID) -> list:
 	for s, expressions in enumerate(memetoks):
 		for e, terms in enumerate(expressions):
 			for t in VALS:
-				if isinstance(terms[t], int): memetoks[s][e][t]=allstrs[terms[t]]
+				if OPR[terms[t-1]][CLMN] in (RID,AID) and isinstance(terms[t], int): memetoks[s][e][t]=allstrs[terms[t]]
 
 
 # Run decode() and identify()
@@ -325,12 +325,13 @@ def selectify(expressions: list[list], gid: int = GID) -> tuple[str, list]:
 	where 	= f"n{n}.gid={gid}"
 	groupby = f"n{n}.bid"
 	join    = ''
-	select  = "';'"
+	select  = "';{' || n0.bid"
 	params 	= []
 	acol    = None
 	aacol   = None
 
 	for terms in expressions:
+
 		tier = OPR[terms[XO]][TIER]
 		tbl = DB['table_node']
 		acol = AID
@@ -354,13 +355,13 @@ def selectify(expressions: list[list], gid: int = GID) -> tuple[str, list]:
 			n+=1
 			aa.append(n)
 			bb.append(n)
-			select	+= f", string_agg(DISTINCT ' ' || n{bb[-2]}.rid || '[' || n{bb[-1]}.rid, '')"
-			join	+= f" JOIN {tbl} n{bb[-1]} ON n{bb[-2]}.aid=n{bb[-1]}.aid AND n{bb[-1]}.gid={gid} AND n{bb[-2]}.bid!=n{bb[-1]}.bid"
-			groupby += f", n{bb[-1]}.aid, n{bb[-1]}.rid, n{bb[-1]}.bid"
+			select	+= ", ' {' || n"+f"{n}.bid"
+			join	+= f" JOIN {tbl} n{n} ON n{bb[-2]}.aid=n{n}.aid AND n{n}.gid={gid} AND n{bb[-2]}.bid!=n{n}.bid"
+			groupby += f", n{n}.bid"
 			aacol    = acol
 
 		elif tier == TREV:
-			select	+= ", ']'"
+			select	+= ", '}'"
 			aa.pop()
 			continue
 
@@ -368,10 +369,10 @@ def selectify(expressions: list[list], gid: int = GID) -> tuple[str, list]:
 			where += f" AND n{n}.rid=%s"
 			params.append(terms[XV])
 
-		if acol == AID:
-			select 	+= f", string_agg(DISTINCT ' ' || n{n}.rid || '=a' || n{n}.aid, '')"
+		if acol in AID:
+			select += f", string_agg(DISTINCT ' ' || n{n}.rid || '=a' || n{n}.aid, '')"
 			if terms[YV] is not None:
-				where += f" AND n{n}.aid=%s"
+				where += f" AND n{n}.{acol}=%s"
 				params.append(terms[YV])
 
 		elif acol == ALP:
@@ -387,7 +388,7 @@ def selectify(expressions: list[list], gid: int = GID) -> tuple[str, list]:
 				where += f" AND n{n}.amt{cpr}%s"
 				params.append(terms[YV])
 
-		if aacol!=AMT and terms[XV] is None and terms[YV] is None:
+		if acol!=AMT and aacol!=AMT and terms[XV] is None and (terms[YV] is None or acol==BID):
 			n+=1
 			select 	+= f", string_agg(DISTINCT ' ' || n{n}.rid || '==' || n{n}.amt, '')"
 			join += f" LEFT JOIN {DB['table_numb']} n{n} ON n{aa[-1]}.bid=n{n}.bid"
@@ -397,7 +398,7 @@ def selectify(expressions: list[list], gid: int = GID) -> tuple[str, list]:
 
 # Input: Memelang query string
 # Output: SQL query string
-def querify(memetoks: list[list], gid: int = GID) -> tuple[str, list]:
+def sqlify(memetoks: list[list], gid: int = GID) -> tuple[str, list]:
 	selects, params = [], []
 	for s, expressions in enumerate(memetoks):
 		qry_select, qry_params = selectify(expressions, gid)
@@ -409,12 +410,10 @@ def querify(memetoks: list[list], gid: int = GID) -> tuple[str, list]:
 # Input: Memelang string
 # Saves to DB
 # Output: Memelang string
-def put (memestr: str, gid: int) -> str:
+def put (memetoks: list, gid: int) -> str:
 	
 	if not gid: raise Exception('put gid')
 	if gid not in KEYS: KEYS[gid]={}
-
-	memetoks = decode(memestr)
 
 	rows = {DB['table_node']:[], DB['table_name']:[], DB['table_numb']:[]}
 	params = {DB['table_node']:[], DB['table_name']:[], DB['table_numb']:[]}
@@ -485,8 +484,35 @@ def put (memestr: str, gid: int) -> str:
 
 	db.inserts(sqls, params.values())
 
-	keyencode(memetoks)
+	keyencode(memetoks, gid)
 	return memetoks
+
+
+def get(memetoks: list, gid: int = GID) -> str:
+
+	sql, params = sqlify(memetoks, gid)
+	res = db.select(sql, params)
+
+	if not res: return ''
+
+	responsestr=''
+	for row in res: responsestr+=row[0]
+	print(responsestr)
+	return decode(responsestr)
+
+
+# Input: Memelang query string
+# Output: Integer count of resulting memes
+def count(memetoks: list, gid: int = GID) -> int:
+	sql, params = sqlify(memetoks, gid)
+	return len(db.select(sql, params))
+
+
+def wipe(gid: int) -> int:
+	if not gid: raise Exception('wipe gid')
+	for tbl in (DB['table_node'], DB['table_numb'], DB['table_name']):
+		db.insert(f"DELETE FROM {tbl} WHERE gid=%s",[gid])
+	return 1
 
 
 # Input: Memelang query string
@@ -500,7 +526,6 @@ def query(memestr: str = None, gid: int = GID) -> str:
 	for terms in memetoks[0]:
 		if terms[XV] == 'act':
 			if isinstance(terms[YV], str):
-				if not I.get(terms[YV].lower()): raise Exception('invalid act=')
 				action=terms[YV]
 				memetoks.pop(0)
 				break
@@ -511,34 +536,7 @@ def query(memestr: str = None, gid: int = GID) -> str:
 		if action == 'get': return keyencode(get(memetoks, gid), gid)
 		elif action == 'cnt': return 'act=cnt amt=' + str(count(memetoks, gid))
 		elif action == 'wip': return 'act=wip amt=' + str(wipe(memetoks, gid))
-		else: raise Exception('query action error')
-
-
-def get(memetoks: list, gid: int = GID) -> str:
-
-	sql, params = querify(memetoks, gid)
-	res = db.select(sql, params)
-
-	if not res: return ''
-
-	responsestr=''
-	for row in res: responsestr+=row[0]
-
-	return decode(responsestr)
-
-
-# Input: Memelang query string
-# Output: Integer count of resulting memes
-def count(memetoks: list, gid: int = GID) -> int:
-	sql, params = querify(memetoks, gid)
-	return len(db.select(sql, params))
-
-
-def wipe(gid: int) -> int:
-	if not gid: raise Exception('wipe gid')
-	for tbl in (DB['table_node'], DB['table_numb'], DB['table_name']):
-		db.insert(f"DELETE FROM {tbl} WHERE gid=%s",[gid])
-	return 1
+		else: raise Exception('api=err fld=act err=invalid')
 
 
 ###############################################################################
@@ -550,6 +548,11 @@ def cli_sql(qry_sql):
 	rows = db.select(qry_sql, [])
 	for row in rows: print(row)
 
+# Execute and output a Memelang query
+def cli_q(memestr: str):
+	print(query(memestr))
+	print()
+	print()
 
 # Execute and output a Memelang query
 def cli_query(memestr: str):
@@ -558,7 +561,7 @@ def cli_query(memestr: str):
 	print ("QUERY:", encode(memetoks))
 
 	memetoks = idecode(memestr)
-	sql, params = querify(memetoks)
+	sql, params = sqlify(memetoks)
 	full_sql = db.morfigy(sql, params)
 	print(f"SQL: {full_sql}\n")
 
@@ -618,7 +621,7 @@ def cli_qrytest():
 			print(f'Query {i}:', memestr2)
 
 
-		sql, params = querify(memetoks)
+		sql, params = sqlify(memetoks)
 		print('SQL: ', db.morfigy(sql, params))
 		
 		c1=count(memetoks)
@@ -681,7 +684,8 @@ if __name__ == "__main__":
 
 	cmd = sys.argv[1]
 	if cmd == 'sql': cli_sql(sys.argv[2])
-	elif cmd in ('query','qry','q','get','g'): cli_query(sys.argv[2])
+	elif cmd == 'q': cli_q(sys.argv[2])
+	elif cmd in ('query','qry'): cli_query(sys.argv[2])
 	elif cmd == 'put': cli_put(sys.argv[2])
 	elif cmd in ('file','import'): cli_putfile(sys.argv[2])
 	elif cmd in ('dbadd','adddb'): cli_dbadd()
