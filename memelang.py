@@ -9,115 +9,106 @@ DB['table_numb']='numb'
 DB['table_name']='name'
 
 ###############################################################################
-#                           CONSTANTS & GLOBALS
+#						   CONSTANTS & GLOBALS
 ###############################################################################
+
+# Default graph ID
+GID = 999
 
 # Global dictionary to cache key->id mappings
 KEYS = {}
-GID = 999 # Default graph ID
-
 I = {
-	' '   : 1,
-	'='   : 2,
-	'['   : 3,
-	']'   : 4,
-	'>>'  : 5,
-	';'   : 6,
-
-	'{'   : 7,
-	'}'   : 8,
-
-	'="'  : 10,
-	'=='  : 13,
-	'>'   : 14,
-	'<'   : 15,
-	'>='  : 16,
-	'<='  : 17,
-	'!='  : 18,
-
 	'nam' : 2**9 + 0,
 	'key' : 2**9 + 1,
 	'tit' : 2**9 + 2,
-
 	'cor' : 2**29
 }
+
+# miad = meme triad = [OPER, VAl1, VAL2]
+# mexps = meme expressions = [[OPER, VAl1, VAL2], ...]
+# mokens = meme tokens = [[[OPER, VAl1, VAL2], ...], ...]
+OPER, VAL1, VAL2 = 0, 1, 2
+
+# For decode()
+SCOMP, SFNC, SCOL, SJON, SBEG, SEND = 0, 1, 2, 3, 4, 5
+INCOMPLETE, SEMICOMPLETE, COMPLETE = 0, 1, 2
+OPR1, OPR2 = VAL1+2, VAL2+2 # OPR1 and OPR2 combine into OPER
+RID, BID, AID, AMT, ALP = 'rid', 'bid', 'aid', 'amt', 'alp'
+LNON, LAND, LFWD, LREV, LIMP, LBEG = 0, 1, 2, 3, 4, 5
+
+OPRSTR = {
+	'!'   : (INCOMPLETE, None, None, None, None, None),
+	'>'   : (SEMICOMPLETE, OPR2, AMT, LNON, '>', None),
+	'<'   : (SEMICOMPLETE, OPR2, AMT, LNON, '<', None),
+	'='   : (SEMICOMPLETE, OPR2, AID, LNON, '=', None),
+	';'   : (COMPLETE, OPR1, RID, LBEG, "\n", None),
+	'=='  : (COMPLETE, OPR2, AMT, LNON, '=', None),
+	'!='  : (COMPLETE, OPR2, AMT, LNON, '!=', None),
+	'>='  : (COMPLETE, OPR2, AMT, LNON, '>=', None),
+	'<='  : (COMPLETE, OPR2, AMT, LNON, '<=', None),
+	' '   : (COMPLETE, OPR1, RID, LAND, ' ', None),
+	'['   : (COMPLETE, OPR1, RID, LFWD, '[', None),
+	']'   : (COMPLETE, OPR1, RID, LREV, ']', None),
+	'{'   : (COMPLETE, OPR2, BID, LNON, '{', None),
+	'}'   : (COMPLETE, OPR2, BID, LREV, '}', None),
+
+	'="'  : (COMPLETE, OPR2, ALP, LNON, '="', '"'),
+}
+
+TBL = {RID: None, BID: None, AID: DB['table_node'], AMT: DB['table_numb'], ALP: DB['table_name']}
+TABL, LINK, COL1, COL2, EQL1, EQL2, OBEG, OMID, OEND = 0, 1, 2, 3, 4, 5, 6, 7, 8
+CV = ((COL1, VAL1), (COL2, VAL2))
+
+# Lazy population for now
+OPERS={}
+ocnt=0
+for k,v in OPRSTR.items():
+	newop=[None, None, None, None, None, None, None, None, None]
+
+	if v[SFNC]==OPR2:
+		ocnt+=1
+		newop[TABL], newop[COL2], newop[LINK], newop[EQL2], newop[OMID], newop[OEND] = TBL[v[SCOL]], v[SCOL], LNON, v[SBEG], v[SBEG], v[SEND]
+		OPERS[ocnt], I[k], = newop[:], ocnt
+
+	elif v[SFNC]==OPR1:
+		ocnt+=1
+		newop[COL1], newop[LINK], newop[OBEG], newop[EQL1] = v[SCOL], v[SJON], v[SBEG], '='
+		OPERS[ocnt], I[k] = newop[:], ocnt
+
+		if newop[LINK]==LREV: continue
+
+		for k2,v2 in OPRSTR.items():
+			if v2[SFNC]!=OPR2: continue
+			ocnt+=1
+			newop[TABL], newop[COL2], newop[EQL2], newop[OMID], newop[OEND] = TBL[v2[SCOL]], v2[SCOL], v2[SBEG], v2[SBEG], v2[SEND]
+			OPERS[ocnt], I[f"{k} {k2}"] = newop[:], ocnt
+
+
+#for k in OPERS: print(f"{k} {OPERS[k]}")
 
 # Lazy population for now
 K = {value: key for key, value in I.items()}
 
-RID, BID, AID, AMT, ALP = 'rid', 'bid', 'aid', 'amt', 'alp'
-TBL = {RID: DB['table_node'], BID: DB['table_node'], AID: DB['table_node'], AMT: DB['table_numb'], ALP: DB['table_name']}
-
-FUNC, CLMN, TIER, OBEG, OEND = 0, 1, 2, 3, 4
-TERM, TAND, TFWD, TREV, TIMP, TEND = 0, 1, 2, 3, 4, 5
-XO, XV, YO, YV, TLEN = 0, 1, 2, 3, 4
-VALS, OPRS = (XV, YV), (XO, YO)
-
-OPR = { # Each operator and its meaning
-	None     : [None, None, None, None, None],
-	I[' ']   : [XO, RID, TAND, False, False],
-	I['>>']  : [XO, RID, TIMP, False, False],
-	I[';']   : [XO, RID, TEND,  "\n", False],
-
-	I['[']   : [XO, RID, TFWD, ' [', False],
-	I[']']   : [XO, RID, TREV, False, False],
-
-	I['{']   : [XO, BID, TERM, False, False],
-	I['}']   : [XO, BID, TERM, False, False],
-
-	I['=']   : [YO, AID, TERM, False, False],
-
-	I['="']  : [YO, ALP, TERM, False, '"'],
-	I['==']  : [YO, AMT, TERM, '=', False],
-	I['>']   : [YO, AMT, TERM, False, False],
-	I['<']   : [YO, AMT, TERM, False, False],
-	I['>=']  : [YO, AMT, TERM, False, False],
-	I['<=']  : [YO, AMT, TERM, False, False],
-	I['!=']  : [YO, AMT, TERM, False, False],
-}
-
-# For decode()
-INCOMPLETE, SEMICOMPLETE, COMPLETE = 1, 2, 3
-OPRSTR = {
-	'!'   : [INCOMPLETE, False],
-	'>'   : [SEMICOMPLETE, I['>']],
-	'<'   : [SEMICOMPLETE, I['<']],
-	'='   : [SEMICOMPLETE, I['=']],
-	'=='  : [COMPLETE, I['==']],
-	'!='  : [COMPLETE, I['!=']],
-	'>='  : [COMPLETE, I['>=']],
-	'<='  : [COMPLETE, I['<=']],
-	';'   : [COMPLETE, I[';']],
-	' '   : [COMPLETE, I[' ']],
-	'>>'  : [COMPLETE, I['>>']],
-	'['   : [COMPLETE, I['[']],
-	']'   : [COMPLETE, I[']']],
-	'{'   : [COMPLETE, I['{']],
-	'}'   : [COMPLETE, I['}']],
-}
-
-
 ###############################################################################
-#                       MEMELANG STRINGING PROCESSING
+#					   MEMELANG STRINGING PROCESSING
 ###############################################################################
 
 # Input: Memelang string as "operator1operand1operator2operand2"
-# Output: memetoks as [[[XO, XV, YO, YV]], ...]
+# Output: mokens as [[[OPER, VAl1, VAL2]], ...]
 def decode(memestr: str) -> list:
 
 	memestr = re.sub(r'\s*//.*$', '', memestr, flags=re.MULTILINE).strip() # Remove comments
 	if len(memestr) == 0: raise Exception('api=err fld=qry msg=empty')
 
-	memetoks, expressions = [], []
-	terms = [None, None, None, None]
-	operator = None
+	mokens, mexps, mquad = [], [], [None, None, None, None, None]
+	func = None
 
 	parts = re.split(r'(?<!\\)"', ';'+memestr)
 	for p, part in enumerate(parts):
 
 		# Quote
 		if p%2==1:
-			terms[YO], terms[YV] = I['="'], part
+			mquad[OPR2], mquad[VAL2] = '="', part
 			continue
 
 		part = re.sub(r'\s*\\\s*', ' ', part)			# Backslash is same line
@@ -138,257 +129,233 @@ def decode(memestr: str) -> list:
 			if len(strtok)==0: pass
 
 			# Operator
-			elif OPRSTR.get(strtok):
+			elif strtok in OPRSTR:
 
-				# We might want to rejoin two sequential operator characters
-				# Such as > and =
-				completeness, operator = OPRSTR[strtok]
+				# We might want to rejoin two sequential operator characters, such as > and =
+				completeness, func = OPRSTR[strtok][0:2]
 				if completeness!=COMPLETE:
 					for n in (1,2):
 						if t<tlen-n and len(strtoks[t+n]):
-							if OPRSTR.get(strtok+strtoks[t+n]):
-								completeness, operator = OPRSTR[strtok+strtoks[t+n]]
+							if strtok+strtoks[t+n] in OPRSTR:
+								strtok += strtoks[t+n]
+								completeness, func = OPRSTR[strtok][0:2]
 								t+=n
 							break
 					if completeness==INCOMPLETE: raise Exception(f'api=err fld=strtok msg=invalid val="{strtok}"')
 
-				func = OPR[operator][FUNC]
+				if mquad[func]:
 
-				if terms[func] and OPR[terms[func]][FUNC]!=TAND:
-					expressions.append(terms)
-					terms = [None, None, None, None]
-					if OPR[operator][TIER] >= TIMP:
-						if expressions: memetoks.append(expressions)
-						expressions = []
+					okey = f"{mquad[OPR1]} {mquad[OPR2]}" if (mquad[OPR1] is not None and mquad[OPR2] is not None) else (mquad[OPR1] or mquad[OPR2])
+					if okey not in I or I[okey] not in OPERS: raise Exception(f"decode okey error on '{okey}'")
 
-				terms[func]=operator
+					if OPERS[I[okey]][LINK] >= LIMP:
+						if mexps: mokens.append(mexps)
+						mexps = []
+
+					mexps.append([I[okey], mquad[VAL1], mquad[VAL2]])
+					mquad = [None, None, None, None, None]
+
+				mquad[func]=strtok
 
 			# Key/Integer/Decimal
 			else:
-				if operator is None: raise Exception(f'Sequence error at {strtok}')
-				if re.search(r'[^a-zA-Z0-9\.\-]', strtok): raise Exception(f"Unexpected '{strtok}' in {memestr}")
-
-				elif OPR[operator][FUNC]==XO:
-					if strtok.isdigit(): strtok=int(strtok)
-
-				elif OPR[operator][FUNC]==YO:
+				if func is None: raise Exception(f'Sequence error at {strtok}')
+				elif re.search(r'[^a-zA-Z0-9\.\-]', strtok): raise Exception(f"Unexpected '{strtok}' in {memestr}")
+				elif func==OPR2:
 					# R=a1234
-					if re.fullmatch(r'a[0-9]+', strtok):
-						strtok=int(strtok[1:])
+					if re.fullmatch(r'a[0-9]+', strtok): strtok=int(strtok[1:])
 
 					# R=1234
 					elif (re.search(r'[0-9]', strtok) and not re.search(r'[a-zA-Z]', strtok)):
 						strtok=float(strtok)
-						if operator==I['=']:
-							operator=I['==']
-							terms[YO]=operator
+						if mquad[OPR2]=='=': mquad[OPR2]='=='
 
-				terms[OPR[operator][FUNC]+1]=strtok
-
+				mquad[func-2]=strtok
 			t+=1
 
-	if terms[XV] or terms[YV] or terms[YO]: expressions.append(terms)
-	if expressions: memetoks.append(expressions)
+	if mquad[VAL1] or mquad[OPR2]:
+		okey = f"{mquad[OPR1]} {mquad[OPR2]}" if (mquad[OPR1] is not None and mquad[OPR2] is not None) else (mquad[OPR1] or mquad[OPR2])
+		if okey not in I or I[okey] not in OPERS: raise Exception(f"decode okey error2 on '{okey}'")
 
-	normalize(memetoks)
+		if OPERS[I[okey]][LINK] >= LIMP:
+			if mexps: mokens.append(mexps)
+			mexps = []
 
-	return memetoks
+		mexps.append([I[okey], mquad[VAL1], mquad[VAL2]])
 
-# Input: memetoks as [[[XO, XV, YO, YV]], ...]
+	if mexps: mokens.append(mexps)
+
+	normalize(mokens)
+
+	return mokens
+
+# Input: mokens as [[[OPER, VAl1, VAL2]], ...]
 # Output: Memelang string "operator1operand1operator2operand2"
-def encode(memetoks: list) -> str:
+def encode(mokens: list) -> str:
 	memestr = ''
-	for s, expressions in enumerate(memetoks):
-		for e, terms in enumerate(expressions):
-			for t in OPRS:
-				if terms[t] is None: continue
-				memestr += K[terms[t]] if OPR[terms[t]][OBEG] is False else OPR[terms[t]][OBEG]
-				if terms[t+1] is not None: memestr += str(terms[t+1])
-				if OPR[terms[t]][OEND]: memestr += OPR[terms[t]][OEND]
+	for mexps in mokens:
+		for miad in mexps:
+			for v in (OPERS[miad[OPER]][OBEG], miad[VAL1], OPERS[miad[OPER]][OMID], miad[VAL2], OPERS[miad[OPER]][OEND]):
+				if v: memestr += str(v)
+
 	return memestr
 
 
-# [[[XO, XV, YO, YV]], ...]
-def normalize(memetoks: list[list]):
-	for s, expressions in enumerate(memetoks):
-		for e, terms in enumerate(expressions):
-			if len(terms)!=TLEN: raise Exception(f"Term count error for at {s}:{e}")
+# [[[OPER, VAl1, VAL2]], ...]
+def normalize(mokens: list[list]):
+	for s, mexps in enumerate(mokens):
+		for e, miad in enumerate(mexps):
 
 			# Clean all
-			for t in range(TLEN):
-				if isinstance(terms[t], str):
-					terms[t]=terms[t].strip()
-					if terms[t].isdigit(): terms[t]=int(terms[t])
-				elif isinstance(terms[t], bool): terms[t]=None
-
-				# Operators
-				if t in OPRS:
-					if isinstance(terms[t], str):
-						if not I[terms[t]] or not OPR.get(I[terms[t]]): raise Exception(f"Operator error for {terms[t]} at {s}:{e}:{t}")
-						terms[t]=I[terms[t]]
-					elif terms[t] is not None and not OPR.get(terms[t]): raise Exception(f"Operator error for {terms[t]} at {s}:{e}:{t}")
+			for t in range(3):
+				if isinstance(miad[t], str):
+					if miad[t].isdigit(): miad[t]=int(miad[t])
+				elif isinstance(miad[t], bool): miad[t]=None
 
 			# Numeric value
-			if OPR[terms[YO]][CLMN]==AMT:
-				if isinstance(terms[YV], int): terms[YV]=float(terms[YV])
-				elif isinstance(terms[YV], str):
-					try: terms[YV] = float(terms[YV])
-					except ValueError: raise Exception(f"String operator error for {terms[YO]} {terms[YV]} at {s}:{e}")
+			if OPERS[miad[OPER]][COL2]==AMT and miad[VAL2] is not None:
+				try: miad[VAL2] = float(miad[VAL2])
+				except ValueError: raise Exception(f"String operator error for {miad[VAL2]} at {s}:{e}")
 
-			memetoks[s][e]=terms
+			mokens[s][e]=miad
 
 
 ###############################################################################
-#                           KEY <-> ID CONVERSIONS
+#						   KEY <-> ID CONVERSIONS
 ###############################################################################
 
 # Input list of key strings ['GeorgeWashington', 'JohnAdams']
 # Load key->aids in I and K caches
 # I['JohnAdams']=123
 # K[123]='JohnAdams'
-def identify(memetoks: list[list], gid: int = GID):
+def identify(mokens: list[list], gid: int = GID):
 	allaids=I
 	if not KEYS.get(gid): KEYS[gid]={}
 	for q, a in KEYS[gid].items(): allaids.setdefault(q.lower(), a)
 
 	lookups={}
 
-	for s, expressions in enumerate(memetoks):
-		for e, terms in enumerate(expressions):
-			for t in VALS:
-				if isinstance(terms[t], str) and not allaids.get(terms[t]): lookups[terms[t].lower()]=1
-
+	for s, mexps in enumerate(mokens):
+		for e, miad in enumerate(mexps):
+			for col, val in CV:
+				if OPERS[miad[OPER]][col] in (AID,RID) and isinstance(miad[val], str) and not allaids.get(miad[val]): lookups[miad[val].lower()]=1
+	
 	if lookups:
 		rows=db.selectin({f'LOWER({ALP})':lookups.keys(), 'rid':[I['key']], 'gid':[gid]}, DB['table_name'])
 		for row in rows: 
 			KEYS[int(row[0])][row[3]] = int(row[1])
 			allaids.setdefault(row[3].lower(), int(row[1]))
 
-	for s, expressions in enumerate(memetoks):
-		for e, terms in enumerate(expressions):
-			for t in VALS:
-				if isinstance(terms[t], str):
-					iid = allaids.get(terms[t].lower(),0)
-					if iid == 0: raise Exception(f"api=err fld=id val=\"{terms[t]}\" msg=notFound")
-					memetoks[s][e][t]=iid
+	for s, mexps in enumerate(mokens):
+		for e, miad in enumerate(mexps):
+			for col, val in CV:
+				if OPERS[miad[OPER]][col] in (AID,RID) and isinstance(miad[val], str) and (iid := allaids.get(miad[val].lower())): mokens[s][e][val]=iid
+	
 
-
-def keyify(memetoks: list[list], gid: int = GID) -> list:
+def keyify(mokens: list[list], gid: int = GID) -> list:
 	allstrs=K
 	if not KEYS.get(gid): KEYS[gid]={}
 	for q, a in KEYS[gid].items(): allstrs.setdefault(a, q)
 
 	lookups={}
 
-	for s, expressions in enumerate(memetoks):
-		for e, terms in enumerate(expressions):
-			for t in VALS:
-				if OPR[terms[t-1]][CLMN] in (RID,AID) and isinstance(terms[t], int) and not allstrs.get(terms[t]): lookups[terms[t]]=1
-
+	for s, mexps in enumerate(mokens):
+		for e, miad in enumerate(mexps):
+			for col, val in CV:
+				if OPERS[miad[OPER]][col] in (RID,AID) and isinstance(miad[val], int) and miad[val] not in allstrs: lookups[miad[val]]=1
+		
 	if lookups:
 		rows=db.selectin({'bid':lookups.keys(), 'rid':[I['key']], 'gid':[gid]}, DB['table_name'])
 		for row in rows: KEYS[int(row[0])][row[3]] = int(row[1])
 		for q, a in KEYS[gid].items(): allstrs.setdefault(a, q)
 
-	for s, expressions in enumerate(memetoks):
-		for e, terms in enumerate(expressions):
-			for t in VALS:
-				if OPR[terms[t-1]][CLMN] in (RID,AID) and isinstance(terms[t], int): memetoks[s][e][t]=allstrs[terms[t]]
+	for s, mexps in enumerate(mokens):
+		for e, miad in enumerate(mexps):
+			for col, val in CV:
+				if OPERS[miad[OPER]][col] in (RID,AID) and isinstance(miad[val], int):
+					if miad[val] in allstrs: mokens[s][e][val]=allstrs[miad[val]]
 
 
 # Run decode() and identify()
 def idecode(memestr: str, gid: int = GID) -> list:
-	memetoks = decode(memestr)
-	identify(memetoks, gid)
-	return memetoks
+	mokens = decode(memestr)
+	identify(mokens, gid)
+	return mokens
 
 
 # Run keyify() and encode()
-def keyencode(memetoks: list[list], gid: int = GID) -> str:
-	keyify(memetoks, gid)
-	return encode(memetoks)
+def keyencode(mokens: list[list], gid: int = GID) -> str:
+	keyify(mokens, gid)
+	return encode(mokens)
 
 
 ###############################################################################
-#                         MEMELANG -> SQL QUERIES
+#						 MEMELANG -> SQL QUERIES
 ###############################################################################
 
-# Input: memetoks
+# Input: mokens
 # Output: "SELECT x FROM y WHERE z", [param1, param2, ...]
-def selectify(expressions: list[list], gid: int = GID) -> tuple[str, list]:
+def selectify(mexps: list[list], gid: int = GID) -> tuple[str, list]:
 
-	n       = 0
-	bb      = [n]
-	aa      = [n]
-	gid     = str(int(gid))
-	tbl     = DB['table_node']
-	where 	= f"n{n}.gid={gid}"
-	groupby = f"n{n}.bid"
-	join    = ''
-	select  = "';{' || n0.bid"
-	params 	= []
-	acol    = None
-	aacol   = None
+	n	     = 0
+	bb	     = [n]
+	aa	     = [n]
+	gid	     = str(int(gid))
+	where 	 = f"n{n}.gid={gid}"
+	groupby  = f"n{n}.bid"
+	join	 = ''
+	select   = "';{' || n0.bid"
+	params 	 = []
+	lastcol2   = None
 
-	for terms in expressions:
+	for miad in mexps:
 
-		tier = OPR[terms[XO]][TIER]
-		tbl = DB['table_node']
-		acol = AID
+		col1, link, oeql1, oeql2 = OPERS[miad[OPER]][COL1], OPERS[miad[OPER]][LINK], OPERS[miad[OPER]][EQL1], OPERS[miad[OPER]][EQL2]
+		tbl = OPERS[miad[OPER]][TABL] or DB['table_node']
+		col2 = OPERS[miad[OPER]][COL2] or AID
 
-		if terms[YO]:
-			acol = OPR[terms[YO]][CLMN]
-			tbl = TBL[acol]
+		if link == LBEG:
+			join += f' FROM {tbl} n{n}'
+			lastcol2 = col2
 
-		if tier == TEND:
-			join 	+= f' FROM {tbl} n{n}'
-			aacol   = acol
-
-		elif tier == TAND:
+		elif link == LAND:
 			n+=1
 			bb.append(n)
-			join += f" LEFT JOIN {tbl} n{bb[-1]} ON n{aa[-1]}.bid=n{bb[-1]}.bid"
-			if acol == AID and aacol == AID:
+			join += f" LEFT JOIN {tbl} n{bb[-1]} ON n{n}.gid={gid} AND n{aa[-1]}.bid=n{bb[-1]}.bid"
+			if col2 == AID and lastcol2 == AID:
 				join += f" AND (n{aa[-1]}.aid!=n{bb[-1]}.aid OR n{aa[-1]}.rid!=n{bb[-1]}.rid)"
 
-		elif tier == TFWD:
+		elif link == LFWD:
 			n+=1
 			aa.append(n)
 			bb.append(n)
-			select	+= ", ' {' || n"+f"{n}.bid"
-			join	+= f" JOIN {tbl} n{n} ON n{bb[-2]}.aid=n{n}.aid AND n{n}.gid={gid} AND n{bb[-2]}.bid!=n{n}.bid"
-			groupby += f", n{n}.bid"
-			aacol    = acol
+			select	 += ", ' {' || n"+f"{n}.bid"
+			join	 += f" JOIN {tbl} n{n} ON n{bb[-2]}.aid=n{n}.aid AND n{n}.gid={gid} AND n{bb[-2]}.bid!=n{n}.bid"
+			groupby  += f", n{n}.bid"
+			lastcol2 = col2
 
-		elif tier == TREV:
+		elif link == LREV:
 			select	+= ", '}'"
 			aa.pop()
 			continue
 
-		if terms[XV] is not None:
-			where += f" AND n{n}.rid=%s"
-			params.append(terms[XV])
+		if miad[VAL1] is not None:
+			where += f" AND n{n}.{col1}{oeql1}%s"
+			params.append(miad[VAL1])
 
-		if acol in AID:
-			select += f", string_agg(DISTINCT ' ' || n{n}.rid || '=a' || n{n}.aid, '')"
-			if terms[YV] is not None:
-				where += f" AND n{n}.{acol}=%s"
-				params.append(terms[YV])
+		if col2 == ALP: select += f", string_agg(DISTINCT ' ' || n{n}.rid || '=\"' || n{n}.{col2} || '\"', '')"
+		elif col2 == AMT: select += f", string_agg(DISTINCT ' ' || n{n}.rid || '==' || n{n}.{col2}, '')"
+		else: select += f", string_agg(DISTINCT ' ' || n{n}.rid || '=a' || n{n}.{AID}, '')"
 
-		elif acol == ALP:
-			select 	+= f", string_agg(DISTINCT ' ' || n{n}.rid || '=\"' || n{n}.alp || '\"', '')"
-			if terms[YV] is not None:
-				where += f" AND LOWER(n{n}.alp) LIKE %s"
-				params.append(terms[YV].lower())
+		if miad[VAL2] is not None:
+			if col2 == ALP:
+				where += f" AND LOWER(n{n}.{col2}) LIKE %s"
+				params.append(miad[VAL2].lower())
+			else:
+				where += f" AND n{n}.{col2}{oeql2}%s"
+				params.append(miad[VAL2])
 
-		elif acol == AMT: 
-			select 	+= f", string_agg(DISTINCT ' ' || n{n}.rid || '==' || n{n}.amt, '')"
-			if terms[YV] is not None:
-				cpr = '=' if terms[YO] == I['=='] else K[terms[YO]]
-				where += f" AND n{n}.amt{cpr}%s"
-				params.append(terms[YV])
-
-		if acol!=AMT and aacol!=AMT and terms[XV] is None and (terms[YV] is None or acol==BID):
+		if AMT not in (col2, lastcol2) and (miad[VAL1] is None or col1==BID) and miad[VAL2] is None:
 			n+=1
 			select 	+= f", string_agg(DISTINCT ' ' || n{n}.rid || '==' || n{n}.amt, '')"
 			join += f" LEFT JOIN {DB['table_numb']} n{n} ON n{aa[-1]}.bid=n{n}.bid"
@@ -398,10 +365,10 @@ def selectify(expressions: list[list], gid: int = GID) -> tuple[str, list]:
 
 # Input: Memelang query string
 # Output: SQL query string
-def sqlify(memetoks: list[list], gid: int = GID) -> tuple[str, list]:
+def sqlify(mokens: list[list], gid: int = GID) -> tuple[str, list]:
 	selects, params = [], []
-	for s, expressions in enumerate(memetoks):
-		qry_select, qry_params = selectify(expressions, gid)
+	for s, mexps in enumerate(mokens):
+		qry_select, qry_params = selectify(mexps, gid)
 		selects.append(qry_select)
 		params.extend(qry_params)
 	return ' UNION '.join(selects), params
@@ -410,7 +377,7 @@ def sqlify(memetoks: list[list], gid: int = GID) -> tuple[str, list]:
 # Input: Memelang string
 # Saves to DB
 # Output: Memelang string
-def put (memetoks: list, gid: int) -> str:
+def put (mokens: list[list], gid: int) -> list[list]:
 	
 	if not gid: raise Exception('put gid')
 	if gid not in KEYS: KEYS[gid]={}
@@ -423,15 +390,16 @@ def put (memetoks: list, gid: int) -> str:
 	newkeys = {}
 	l2u = {}
 
-	for s, expressions in enumerate(memetoks):
-		for e, terms in enumerate(expressions):
-			for t in VALS:
-				if terms[t] is None: raise Exception(f'Invalid null {terms}')
-				if isinstance(terms[t], str):
-					if iid := KEYS[gid].get(terms[t]): memetoks[s][e][t]=iid
-					elif re.search(r'[^a-zA-Z0-9]', terms[t]): raise Exception(f'Invalid key {terms[t]} in {terms}')
+	for s, mexps in enumerate(mokens):
+		for e, miad in enumerate(mexps):
+			if OPERS[miad[OPER]][COL1] == BID and e!=0: raise Exception('bid must be first')
+			for col, val in CV:
+				if miad[val] is None: raise Exception(f'Invalid null {miad}')
+				if isinstance(miad[val], str):
+					if iid := KEYS[gid].get(miad[val]): mokens[s][e][val]=iid
+					elif re.search(r'[^a-zA-Z0-9]', miad[val]): raise Exception(f'Invalid key {miad[val]} in {miad}')
 					else: 
-						alp = db.slugify(terms[t])
+						alp = db.slugify(miad[val])
 						alpl = alp.lower()
 						if not newkeys.get(alpl):
 							newkeys[alpl] = 0
@@ -463,18 +431,19 @@ def put (memetoks: list, gid: int) -> str:
 			params[DB['table_name']].extend([gid, aid, I['key'], alp])
 
 		# Swap missing keys for new IDs
-		identify(memetoks, gid)
+		identify(mokens, gid)
 	
 	# NEW MEMES
-	for s, expressions in enumerate(memetoks):
-		bid = db.seqinc(DB['table_seqn'])
-		for e, terms in enumerate(expressions):
-			col = OPR[terms[YO]][CLMN]
-			if col == AID: tbl = DB['table_node']
-			elif col == AMT: tbl = DB['table_numb']
-			elif col == ALP: tbl = DB['table_name']
-			else: raise Exception('put col')
-			params[tbl].extend([gid, bid, terms[XV], terms[YV]])
+	for s, mexps in enumerate(mokens):
+		for e, miad in enumerate(mexps):
+			if e==0:
+				if OPERS[miad[OPER]][COL1] == BID:
+					bid=miad[VAL1]
+					continue
+				else: bid = db.seqinc(DB['table_seqn'])
+
+			tbl = OPERS[miad[OPER]][TABL] or DB['table_node']
+			params[tbl].extend([gid, bid, miad[VAL1], miad[VAL2]])
 			rows[tbl].append('(%s,%s,%s,%s)')
 
 	sqls=[]
@@ -484,63 +453,142 @@ def put (memetoks: list, gid: int) -> str:
 
 	db.inserts(sqls, params.values())
 
-	keyencode(memetoks, gid)
-	return memetoks
+	return mokens
 
 
-def get(memetoks: list, gid: int = GID) -> str:
-
-	sql, params = sqlify(memetoks, gid)
+def get(mokens: list[list], gid: int = GID) -> list[list]:
+	sql, params = sqlify(mokens, gid)
 	res = db.select(sql, params)
 
-	if not res: return ''
+	if not res: return []
 
 	responsestr=''
 	for row in res: responsestr+=row[0]
-	print(responsestr)
+	#print(responsestr)
 	return decode(responsestr)
 
 
 # Input: Memelang query string
 # Output: Integer count of resulting memes
-def count(memetoks: list, gid: int = GID) -> int:
-	sql, params = sqlify(memetoks, gid)
+def count(mokens: list[list], gid: int = GID) -> int:
+	sql, params = sqlify(mokens, gid)
 	return len(db.select(sql, params))
 
 
-def wipe(gid: int) -> int:
-	if not gid: raise Exception('wipe gid')
-	for tbl in (DB['table_node'], DB['table_numb'], DB['table_name']):
-		db.insert(f"DELETE FROM {tbl} WHERE gid=%s",[gid])
+def deljob(j: str, mokens: list[list], gid: int = GID) -> int:
+	if not gid: raise Exception('deljob gid')
+
+	fields = {}
+	values = {AID:None, RID:None, BID:None}
+	tbl = DB['table_node']
+	col2 = AID
+	sqls, params = [], []
+
+	if len(mokens)!=1: raise Exception('deljob moken count')
+
+	for miad in mokens[0]:
+		if miad[VAL1]:
+			col1 = OPERS[miad[OPER]][COL1]
+			if col1 in (RID,BID):
+				if values[col1]: raise Exception('deljob double value')
+				values[col1]=miad[VAL1]
+			else: raise Exception('deljob col1')
+
+		if miad[VAL2]:
+			if values[AID] is not None: raise Exception('deljob double aid value')
+			if OPERS[miad[OPER]][TABL]: tbl = OPERS[miad[OPER]][TABL]
+			col2 = OPERS[miad[OPER]][COL2]
+			values[AID]=miad[VAL2]
+
+	if j == 'delg':
+		fields = {AID:False, RID:False, BID:False}
+		for tbl in (DB['table_node'], DB['table_numb'], DB['table_name']):
+			sqls.append(f"DELETE FROM {tbl} WHERE gid=%s")
+			params.append([gid])
+
+	elif j == 'dela':	
+		fields = {AID:True, RID:False, BID:False}
+		sqls.append(f"DELETE FROM {DB['table_node']} WHERE gid=%s AND aid=%s")
+		params.append([gid, values[AID]])
+
+	elif j == 'delr':
+		fields = {AID:False, RID:True, BID:False}
+		for tbl in (DB['table_node'], DB['table_numb'], DB['table_name']):
+			sqls.append(f"DELETE FROM {tbl} WHERE gid=%s AND rid=%s")
+			params.append([gid, values[RID]])
+		
+	elif j == 'delb':
+		fields = {AID:False, RID:False, BID:True}
+		for tbl in (DB['table_node'], DB['table_numb'], DB['table_name']):
+			sqls.append(f"DELETE FROM {tbl} WHERE gid=%s AND bid=%s")
+			params.append([gid, values[BID]])
+
+	elif j == 'delarb':
+		fields = {AID:True, RID:True, BID:True}
+		sqls.append(f"DELETE FROM {tbl} WHERE gid=%s AND {col2}=%s AND rid=%s AND bid=%s")
+		params.append([gid, values[AID], values[RID], values[BID]])
+	
+	else: raise Exception(f'deljob unknown')
+
+	for k in fields:
+		if fields[k] == True:
+			if not values[k]: raise Exception(f"deljob field {k} is empty")
+		elif fields[k] == False:
+			if values[k]: raise Exception(f"deljob field {k} must be empty")
+
+	db.inserts(sqls, params)
 	return 1
+
+
+def jobify(memestr: str, morekeys: list = []) -> dict:
+	found=False
+	job = {'*':None, 'j': None, 'g': None}
+
+	for k in morekeys: job[k] = None
+	lines = re.split(r'[\n;]+', memestr)
+	if not lines or not lines[0]: return job
+
+	pairs = re.split(r'\s+', lines[0])
+	for kv in pairs:
+		if '=' not in kv: continue
+		key, val = kv.split('=', 1)
+		if not val or not key or key not in job: continue
+		elif job[key] is not None: raise Exception(f'redundant value for {key}=')
+		elif key == 'j': val = val.lower()
+		elif key == 'g':
+			try: val = int(val)
+			except: raise Exception(f'int err {key}')
+
+		job[key] = val
+		job['*'] = True
+
+	return job
 
 
 # Input: Memelang query string
 # Output: Memelang results string
-def query(memestr: str = None, gid: int = GID) -> str:
-	memetoks = decode(memestr);
+def query(memestr: str = None) -> str:
+	mokens = decode(memestr);
 
-	if not memetoks: return False
+	if not mokens: return ''
 
-	action = 'get'
-	for terms in memetoks[0]:
-		if terms[XV] == 'act':
-			if isinstance(terms[YV], str):
-				action=terms[YV]
-				memetoks.pop(0)
-				break
+	job=jobify(memestr)
+	if job['*']: mokens.pop(0)
+	if not job['j']: job['j'] = 'get'
+	if not job['g']: job['g'] = GID
 
-	if action == 'put': return put(memetoks, gid)
+	if job['j'] == 'put': return keyencode(put(mokens, job['g']), job['g'])
 	else:
-		identify(memetoks)
-		if action == 'get': return keyencode(get(memetoks, gid), gid)
-		elif action == 'cnt': return 'act=cnt amt=' + str(count(memetoks, gid))
-		elif action == 'wip': return 'act=wip amt=' + str(wipe(memetoks, gid))
-		else: raise Exception('api=err fld=act err=invalid')
+		identify(mokens, job['g'])
+		if job['j'] == 'get': return keyencode(get(mokens, job['g']), job['g'])
+		elif job['j'] == 'cnt': return 'amt=' + str(count(mokens, job['g']))
+		elif job['j'].startswith('del'): return 'amt=' + str(deljob(job['j'], mokens, job['g']))
+		else: raise Exception('invalid job')
+
 
 
 ###############################################################################
-#                                  CLI
+#								  CLI
 ###############################################################################
 
 # Execute and output an SQL query
@@ -556,12 +604,12 @@ def cli_q(memestr: str):
 
 # Execute and output a Memelang query
 def cli_query(memestr: str):
-	memetoks = decode(memestr)
-	print ("TOKENS:", memetoks)
-	print ("QUERY:", encode(memetoks))
+	mokens = decode(memestr)
+	print ("TOKENS:", mokens)
+	print ("QUERY:", encode(mokens).replace('\n', ';'))
 
-	memetoks = idecode(memestr)
-	sql, params = sqlify(memetoks)
+	mokens = idecode(memestr)
+	sql, params = sqlify(mokens)
 	full_sql = db.morfigy(sql, params)
 	print(f"SQL: {full_sql}\n")
 
@@ -607,25 +655,25 @@ def cli_qrytest():
 	errcnt=0
 
 	for memestr in queries:
-		memetoks=decode(memestr)
-		print('Tokens:', memetoks)
-		identify(memetoks)
-		print('Idents:', memetoks)
+		mokens=decode(memestr)
+		print('Tokens:', mokens)
+		identify(mokens)
+		print('Idents:', mokens)
 		print('Query 1:', memestr)
-		memetoks2 = copy.deepcopy(memetoks)
+		mokens2 = copy.deepcopy(mokens)
 		memestr2 = memestr
 
 		for i in range(2,4):
-			memestr2 = keyencode(memetoks2).replace("\n", ";")
-			memetoks2 = idecode(memestr2)
+			memestr2 = keyencode(mokens2).replace("\n", ";")
+			mokens2 = idecode(memestr2)
 			print(f'Query {i}:', memestr2)
 
 
-		sql, params = sqlify(memetoks)
+		sql, params = sqlify(mokens)
 		print('SQL: ', db.morfigy(sql, params))
 		
-		c1=count(memetoks)
-		c2=count(memetoks2)
+		c1=count(mokens)
+		c2=count(mokens2)
 		print ('First Count:  ', c1)
 		print ('Second Count: ', c2)
 
@@ -657,9 +705,9 @@ def cli_tableadd():
 	commands = [
 		f"CREATE SEQUENCE {DB['table_seqn']} AS BIGINT START {corp} INCREMENT 1 CACHE 1;",
 		f"SELECT setval('{DB['table_seqn']}', {corp}, false);",
-		f"CREATE TABLE {DB['table_node']} (gid BIGINT, bid BIGINT, rid BIGINT, aid BIGINT, PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_node']}_rid_idx ON {DB['table_node']} USING hash (rid); CREATE INDEX {DB['table_node']}_aid_idx ON {DB['table_node']} USING hash (aid);",
-		f"CREATE TABLE {DB['table_numb']} (gid BIGINT, bid BIGINT, rid BIGINT, amt DOUBLE PRECISION, PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_numb']}_rid_idx ON {DB['table_numb']} USING hash (rid); CREATE INDEX {DB['table_numb']}_amt_idx ON {DB['table_numb']} (amt);",
-		f"CREATE TABLE {DB['table_name']} (gid BIGINT, bid BIGINT, rid BIGINT, alp VARCHAR(511), PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_name']}_rid_idx ON {DB['table_name']} USING hash (rid); CREATE INDEX {DB['table_name']}_alp_idx ON {DB['table_name']} (LOWER(alp));",
+		f"CREATE TABLE {DB['table_node']} (gid BIGINT, bid BIGINT, rid BIGINT, aid BIGINT, PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_node']}_rid_idx ON {DB['table_node']} (rid); CREATE INDEX {DB['table_node']}_aid_idx ON {DB['table_node']} (aid);",
+		f"CREATE TABLE {DB['table_numb']} (gid BIGINT, bid BIGINT, rid BIGINT, amt DOUBLE PRECISION, PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_numb']}_rid_idx ON {DB['table_numb']} (rid); CREATE INDEX {DB['table_numb']}_amt_idx ON {DB['table_numb']} (amt);",
+		f"CREATE TABLE {DB['table_name']} (gid BIGINT, bid BIGINT, rid BIGINT, alp VARCHAR(511), PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_name']}_rid_idx ON {DB['table_name']} (rid); CREATE INDEX {DB['table_name']}_alp_idx ON {DB['table_name']} (LOWER(alp));",
 		f"GRANT USAGE, UPDATE ON SEQUENCE {DB['table_seqn']} TO {DB['user']};",
 		f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {DB['table_node']} TO {DB['user']};",
 		f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {DB['table_numb']} TO {DB['user']};",
