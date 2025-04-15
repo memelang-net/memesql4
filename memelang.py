@@ -293,8 +293,6 @@ def keyencode(mokens: list[list], gid: int = GID) -> str:
 #						 MEMELANG -> SQL QUERIES
 ###############################################################################
 
-# Input: mokens
-# Output: "SELECT x FROM y WHERE z", [param1, param2, ...]
 def selectify(mexps: list[list], gid: int = GID) -> tuple[str, list]:
 
 	n	     = 0
@@ -363,8 +361,6 @@ def selectify(mexps: list[list], gid: int = GID) -> tuple[str, list]:
 	return f"SELECT CONCAT({select}) AS raq {join} WHERE {where} GROUP BY {groupby}", params
 
 
-# Input: Memelang query string
-# Output: SQL query string
 def sqlify(mokens: list[list], gid: int = GID) -> tuple[str, list]:
 	selects, params = [], []
 	for s, mexps in enumerate(mokens):
@@ -374,9 +370,6 @@ def sqlify(mokens: list[list], gid: int = GID) -> tuple[str, list]:
 	return ' UNION '.join(selects), params
 
 
-# Input: Memelang string
-# Saves to DB
-# Output: Memelang string
 def put (mokens: list[list], gid: int) -> list[list]:
 	
 	if not gid: raise Exception('put gid')
@@ -620,13 +613,13 @@ def cli_query(memestr: str):
 	print()
 
 def cli_put(memestr: str):
-	print(keyencode(put(memestr, GID), GID))
+	print(keyencode(put(decode(memestr), GID), GID))
 	print()
 	print()
 
 # Read a meme file and save it to DB
 def cli_putfile(file_path):
-	with open(file_path, 'r', encoding='utf-8') as f: print(keyencode(put(f.read(), GID), GID))
+	with open(file_path, 'r', encoding='utf-8') as f: print(keyencode(put(decode(f.read()), GID), GID))
 	
 
 # Test various Memelang queries
