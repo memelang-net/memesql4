@@ -404,7 +404,7 @@ spouse=RichardNixon spouse=PatNixon
 parent=RichardNixon child=TriciaNixonCox
 parent=RichardNixon child=JulieNixonEisenhower
 eventee=GeraldFord event=birth year=1913 country=USA state=Nebraska
-eventee=GeraldFord event=death year=ad=2006
+eventee=GeraldFord event=death year=2006
 party=Republican officer=GeraldFord office=President jurisdiction=USA year=1974 spanyear=2
 student=GeraldFord college=UniversityOfMichigan
 student=GeraldFord college=Yale
@@ -425,7 +425,7 @@ parent=JamesCarter child=JohnWilliamCarter
 parent=JamesCarter child=JamesEarlCarter
 parent=JamesCarter child=AmyCarter
 eventee=RonaldReagan event=birth year=1911 country=USA state=Illinois
-eventee=RonaldReagan event=death year=ad=2004
+eventee=RonaldReagan event=death year=2004
 party=Republican officer=RonaldReagan office=President jurisdiction=USA year=1980 spanyear=8
 student=RonaldReagan college=Eureka
 employee=RonaldReagan profession=actor
@@ -436,7 +436,7 @@ parent=RonaldReagan child=MichaelReagan
 parent=RonaldReagan child=PattiDavis
 parent=RonaldReagan child=RonReagan
 eventee=GeorgeHWBush event=birth year=1924 country=USA state=Massachusetts
-eventee=GeorgeHWBush event=death year=ad=2018
+eventee=GeorgeHWBush event=death year=2018
 party=Republican officer=GeorgeHWBush office=President jurisdiction=USA year=1988 spanyear=4
 student=GeorgeHWBush college=Yale
 officer=GeorgeHWBush office=Congress jurisdiction=USA

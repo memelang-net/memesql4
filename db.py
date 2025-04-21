@@ -1,5 +1,6 @@
 import os, re
 from psycopg2.pool import ThreadedConnectionPool
+from psycopg2.extras import RealDictCursor
 
 DB = {
 	'host': 'localhost',
@@ -23,6 +24,7 @@ def poolinit():
 		)
 	return GLOBAL_POOL
 
+
 def select(sql: str, params: list = None) -> list:
 	if params is None: params = []
 	pool = poolinit()
@@ -33,7 +35,34 @@ def select(sql: str, params: list = None) -> list:
 			rows = cursor.fetchall()
 		return [list(row) for row in rows]
 	finally:
+		conn.rollback()
 		pool.putconn(conn)
+
+
+def cselect(sql: str, params: list = None) -> list:
+	if params is None: params = []
+	pool = poolinit()
+	conn = pool.getconn()
+	try:
+		with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+			cursor.execute(sql, params)
+			return cursor.fetchall()
+	finally:
+		conn.rollback()
+		pool.putconn(conn)
+
+def coselect(sql: str, params: list = None) -> list:
+	if params is None: params = []
+	pool = poolinit()
+	conn = pool.getconn()
+	try:
+		with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+			cursor.execute(sql, params)
+			return cursor.fetchone() or {}
+	finally:
+		conn.rollback()
+		pool.putconn(conn)
+
 
 def insert(sql: str, params: list = None):
 	if params is None: params = []
@@ -48,6 +77,7 @@ def insert(sql: str, params: list = None):
 		raise e
 	finally:
 		pool.putconn(conn)
+
 
 def inserts(sqls: list[str], params: list[list]):
 	pool = poolinit()
@@ -66,21 +96,9 @@ def inserts(sqls: list[str], params: list[list]):
 	finally:
 		pool.putconn(conn)
 
-def inreturn(sql: str, params: list = None):
-	if params is None: params = []
-	pool = poolinit()
-	conn = pool.getconn()
-	try:
-		with conn.cursor() as cursor:
-			cursor.execute(sql, params)
-			conn.commit()
-			row = cursor.fetchone()
-			return row[0] if row else None
-	except Exception as e:
-		conn.rollback()
-		raise e
-	finally:
-		pool.putconn(conn)
+
+def cinsert (table: str, row: dict, cols: tuple):
+	return insert(f'INSERT INTO "{table}" ({','.join(cols)}) VALUES ({','.join(['%s'] * len(cols))})', [row[c] for c in cols])
 
 
 def selectin(cols: dict = {}, table: str = None) -> list:
@@ -104,6 +122,7 @@ def selectin(cols: dict = {}, table: str = None) -> list:
 	finally:
 		pool.putconn(conn)
 
+
 def seqinc(seqn: str = None) -> int:
 	if not seqn: raise ValueError("No sequence name provided.")
 	pool = poolinit()
@@ -121,16 +140,18 @@ def seqinc(seqn: str = None) -> int:
 		pool.putconn(conn)
 
 def psql(sql: str, db: str = None):
-	if not db: raise ValueError("No db name provided.")
+	if not db: db = DB['name']
 	command = f"sudo -u postgres psql -d {db} -c \"{sql}\""
 	print(command)
 	os.system(command)
+
 
 def morfigy(sql: str, params: list) -> str:
 	for param in params:
 		rep = param.replace("'", "''") if isinstance(param, str) else str(param)
 		sql = sql.replace("%s", rep, 1)
 	return sql
+
 
 # Input: "John Adams"
 # Output: "JohnAdams"

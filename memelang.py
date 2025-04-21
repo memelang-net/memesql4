@@ -3,25 +3,24 @@
 import sys, os, re, glob, db
 from db import DB
 
-DB['table_seqn']='seqn'
-DB['table_node']='node'
-DB['table_numb']='numb'
-DB['table_name']='name'
 
 ###############################################################################
 #						   CONSTANTS & GLOBALS
 ###############################################################################
 
+DB['table_seqn']='seqn'
+DB['table_meme']='meme'
+
 # Default graph ID
-GID = 999
+DEFGID = 999
 
 # Global dictionary to cache key->id mappings
 KEYS = {}
 I = {
-	'nam' : 2**9 + 0,
-	'key' : 2**9 + 1,
-	'tit' : 2**9 + 2,
-	'cor' : 2**29
+	'nam' : 2**29 + 0,
+	'key' : 2**29 + 1,
+	'tit' : 2**29 + 2,
+	'cor' : 2**30
 }
 
 # miad = meme triad = [OPER, VAl1, VAL2]
@@ -33,7 +32,9 @@ OPER, VAL1, VAL2 = 0, 1, 2
 SCOMP, SFNC, SCOL, SJON, SBEG, SEND = 0, 1, 2, 3, 4, 5
 INCOMPLETE, SEMICOMPLETE, COMPLETE = 0, 1, 2
 OPR1, OPR2 = VAL1+2, VAL2+2 # OPR1 and OPR2 combine into OPER
-RID, BID, AID, AMT, ALP = 'rid', 'bid', 'aid', 'amt', 'alp'
+PLACEHOLDER = '(%s,%s,%s,%s,%s,%s)'
+GID, BID, RID, AID, AMT, ALP = 'gid', 'bid', 'rid', 'aid', 'amt', 'alp'
+oGID, oBID, oRID, oAID, oAMT, oALP = 0, 1, 2, 3, 4, 5
 LNON, LAND, LFWD, LREV, LIMP, LBEG = 0, 1, 2, 3, 4, 5
 
 OPRSTR = {
@@ -41,7 +42,7 @@ OPRSTR = {
 	'>'   : (SEMICOMPLETE, OPR2, AMT, LNON, '>', None),
 	'<'   : (SEMICOMPLETE, OPR2, AMT, LNON, '<', None),
 	'='   : (SEMICOMPLETE, OPR2, AID, LNON, '=', None),
-	';'   : (COMPLETE, OPR1, RID, LBEG, "\n", None),
+	';'   : (SEMICOMPLETE, OPR1, RID, LBEG, "\n", None),
 	'=='  : (COMPLETE, OPR2, AMT, LNON, '=', None),
 	'!='  : (COMPLETE, OPR2, AMT, LNON, '!=', None),
 	'>='  : (COMPLETE, OPR2, AMT, LNON, '>=', None),
@@ -49,14 +50,15 @@ OPRSTR = {
 	' '   : (COMPLETE, OPR1, RID, LAND, ' ', None),
 	'['   : (COMPLETE, OPR1, RID, LFWD, '[', None),
 	']'   : (COMPLETE, OPR1, RID, LREV, ']', None),
-	'{'   : (COMPLETE, OPR2, BID, LNON, '{', None),
-	'}'   : (COMPLETE, OPR2, BID, LREV, '}', None),
+	';{'  : (COMPLETE, OPR1, GID, LBEG, '\n{', None),
+	'{'   : (COMPLETE, OPR1, GID, LFWD, '{', None),
+	'}'   : (COMPLETE, OPR1, GID, LREV, '}', None),
+	':'   : (COMPLETE, OPR2, BID, LNON, ':', None),
 
 	'="'  : (COMPLETE, OPR2, ALP, LNON, '="', '"'),
 }
 
-TBL = {RID: None, BID: None, AID: DB['table_node'], AMT: DB['table_numb'], ALP: DB['table_name']}
-TABL, LINK, COL1, COL2, EQL1, EQL2, OBEG, OMID, OEND = 0, 1, 2, 3, 4, 5, 6, 7, 8
+LINK, COL1, COL2, EQL1, EQL2, OBEG, OMID, OEND = 0, 1, 2, 3, 4, 5, 6, 7
 CV = ((COL1, VAL1), (COL2, VAL2))
 
 # Lazy population for now
@@ -67,7 +69,7 @@ for k,v in OPRSTR.items():
 
 	if v[SFNC]==OPR2:
 		ocnt+=1
-		newop[TABL], newop[COL2], newop[LINK], newop[EQL2], newop[OMID], newop[OEND] = TBL[v[SCOL]], v[SCOL], LNON, v[SBEG], v[SBEG], v[SEND]
+		newop[COL2], newop[LINK], newop[EQL2], newop[OMID], newop[OEND] = v[SCOL], LNON, v[SBEG], v[SBEG], v[SEND]
 		OPERS[ocnt], I[k], = newop[:], ocnt
 
 	elif v[SFNC]==OPR1:
@@ -80,7 +82,7 @@ for k,v in OPRSTR.items():
 		for k2,v2 in OPRSTR.items():
 			if v2[SFNC]!=OPR2: continue
 			ocnt+=1
-			newop[TABL], newop[COL2], newop[EQL2], newop[OMID], newop[OEND] = TBL[v2[SCOL]], v2[SCOL], v2[SBEG], v2[SBEG], v2[SEND]
+			newop[COL2], newop[EQL2], newop[OMID], newop[OEND] = v2[SCOL], v2[SBEG], v2[SBEG], v2[SEND]
 			OPERS[ocnt], I[f"{k} {k2}"] = newop[:], ocnt
 
 
@@ -119,7 +121,7 @@ def decode(memestr: str) -> list:
 		part = re.sub(r';+$', '', part)					# Remove ending semicolon
 
 		# Split by operator characters
-		strtoks = re.split(r'([\]\[\}\{;!><=\s])', part)
+		strtoks = re.split(r'([\]\[\}\{:;!><=\s])', part)
 		tlen = len(strtoks)
 		t = 0
 		while t<tlen:
@@ -228,7 +230,7 @@ def normalize(mokens: list[list]):
 # Load key->aids in I and K caches
 # I['JohnAdams']=123
 # K[123]='JohnAdams'
-def identify(mokens: list[list], gid: int = GID):
+def identify(mokens: list[list], gid: int = DEFGID):
 	allaids=I
 	if not KEYS.get(gid): KEYS[gid]={}
 	for q, a in KEYS[gid].items(): allaids.setdefault(q.lower(), a)
@@ -241,10 +243,10 @@ def identify(mokens: list[list], gid: int = GID):
 				if OPERS[miad[OPER]][col] in (AID,RID) and isinstance(miad[val], str) and not allaids.get(miad[val]): lookups[miad[val].lower()]=1
 	
 	if lookups:
-		rows=db.selectin({f'LOWER({ALP})':lookups.keys(), 'rid':[I['key']], 'gid':[gid]}, DB['table_name'])
+		rows=db.selectin({f'LOWER({ALP})':lookups.keys(), 'rid':[I['key']], 'gid':[gid]}, DB['table_meme'])
 		for row in rows: 
-			KEYS[int(row[0])][row[3]] = int(row[1])
-			allaids.setdefault(row[3].lower(), int(row[1]))
+			KEYS[int(row[oGID])][row[oALP]] = int(row[oBID])
+			allaids.setdefault(row[oALP].lower(), int(row[oBID]))
 
 	for s, mexps in enumerate(mokens):
 		for e, miad in enumerate(mexps):
@@ -252,7 +254,7 @@ def identify(mokens: list[list], gid: int = GID):
 				if OPERS[miad[OPER]][col] in (AID,RID) and isinstance(miad[val], str) and (iid := allaids.get(miad[val].lower())): mokens[s][e][val]=iid
 	
 
-def keyify(mokens: list[list], gid: int = GID) -> list:
+def keyify(mokens: list[list], gid: int = DEFGID) -> list:
 	allstrs=K
 	if not KEYS.get(gid): KEYS[gid]={}
 	for q, a in KEYS[gid].items(): allstrs.setdefault(a, q)
@@ -265,8 +267,8 @@ def keyify(mokens: list[list], gid: int = GID) -> list:
 				if OPERS[miad[OPER]][col] in (RID,AID) and isinstance(miad[val], int) and miad[val] not in allstrs: lookups[miad[val]]=1
 		
 	if lookups:
-		rows=db.selectin({'bid':lookups.keys(), 'rid':[I['key']], 'gid':[gid]}, DB['table_name'])
-		for row in rows: KEYS[int(row[0])][row[3]] = int(row[1])
+		rows=db.selectin({'bid':lookups.keys(), 'rid':[I['key']], 'gid':[gid]}, DB['table_meme'])
+		for row in rows: KEYS[int(row[oGID])][row[oALP]] = int(row[oBID])
 		for q, a in KEYS[gid].items(): allstrs.setdefault(a, q)
 
 	for s, mexps in enumerate(mokens):
@@ -277,14 +279,14 @@ def keyify(mokens: list[list], gid: int = GID) -> list:
 
 
 # Run decode() and identify()
-def idecode(memestr: str, gid: int = GID) -> list:
+def idecode(memestr: str, gid: int = DEFGID) -> list:
 	mokens = decode(memestr)
 	identify(mokens, gid)
 	return mokens
 
 
 # Run keyify() and encode()
-def keyencode(mokens: list[list], gid: int = GID) -> str:
+def keyencode(mokens: list[list], gid: int = DEFGID) -> str:
 	keyify(mokens, gid)
 	return encode(mokens)
 
@@ -293,33 +295,32 @@ def keyencode(mokens: list[list], gid: int = GID) -> str:
 #						 MEMELANG -> SQL QUERIES
 ###############################################################################
 
-def selectify(mexps: list[list], gid: int = GID) -> tuple[str, list]:
+def selectify(mexps: list[list], gid: int = DEFGID) -> tuple[str, list]:
 
 	n	     = 0
 	bb	     = [n]
 	aa	     = [n]
 	gid	     = str(int(gid))
 	where 	 = f"n{n}.gid={gid}"
-	groupby  = f"n{n}.bid"
+	groupby  = f"n{n}.gid,n{n}.bid"
 	join	 = ''
-	select   = "';{' || n0.bid"
+	select   = f"""';{{' || n{n}.gid || ':' || n{n}.bid"""
 	params 	 = []
 	lastcol2   = None
 
 	for miad in mexps:
 
 		col1, link, oeql1, oeql2 = OPERS[miad[OPER]][COL1], OPERS[miad[OPER]][LINK], OPERS[miad[OPER]][EQL1], OPERS[miad[OPER]][EQL2]
-		tbl = OPERS[miad[OPER]][TABL] or DB['table_node']
 		col2 = OPERS[miad[OPER]][COL2] or AID
 
 		if link == LBEG:
-			join += f' FROM {tbl} n{n}'
+			join += f' FROM {DB['table_meme']} n{n}'
 			lastcol2 = col2
 
 		elif link == LAND:
 			n+=1
 			bb.append(n)
-			join += f" LEFT JOIN {tbl} n{bb[-1]} ON n{n}.gid={gid} AND n{aa[-1]}.bid=n{bb[-1]}.bid"
+			join += f" LEFT JOIN {DB['table_meme']} n{bb[-1]} ON n{n}.gid={gid} AND n{aa[-1]}.bid=n{bb[-1]}.bid"
 			if col2 == AID and lastcol2 == AID:
 				join += f" AND (n{aa[-1]}.aid!=n{bb[-1]}.aid OR n{aa[-1]}.rid!=n{bb[-1]}.rid)"
 
@@ -327,9 +328,9 @@ def selectify(mexps: list[list], gid: int = GID) -> tuple[str, list]:
 			n+=1
 			aa.append(n)
 			bb.append(n)
-			select	 += ", ' {' || n"+f"{n}.bid"
-			join	 += f" JOIN {tbl} n{n} ON n{bb[-2]}.aid=n{n}.aid AND n{n}.gid={gid} AND n{bb[-2]}.bid!=n{n}.bid"
-			groupby  += f", n{n}.bid"
+			select	 += f""", ' {{' || n{n}.gid || ':' || n{n}.bid"""
+			join	 += f" JOIN {DB['table_meme']} n{n} ON n{bb[-2]}.aid=n{n}.aid AND n{n}.gid={gid} AND n{bb[-2]}.bid!=n{n}.bid"
+			groupby  += f", n{n}.gid, n{n}.bid"
 			lastcol2 = col2
 
 		elif link == LREV:
@@ -341,9 +342,7 @@ def selectify(mexps: list[list], gid: int = GID) -> tuple[str, list]:
 			where += f" AND n{n}.{col1}{oeql1}%s"
 			params.append(miad[VAL1])
 
-		if col2 == ALP: select += f", string_agg(DISTINCT ' ' || n{n}.rid || '=\"' || n{n}.{col2} || '\"', '')"
-		elif col2 == AMT: select += f", string_agg(DISTINCT ' ' || n{n}.rid || '==' || n{n}.{col2}, '')"
-		else: select += f", string_agg(DISTINCT ' ' || n{n}.rid || '=a' || n{n}.{AID}, '')"
+		select += f''', string_agg(DISTINCT CONCAT(' ', n{n}.rid, '=', CONCAT(n{n}.{AMT}, 'a', n{n}.{AID}, '"',  n{n}.{ALP}, '"')), '')'''
 
 		if miad[VAL2] is not None:
 			if col2 == ALP:
@@ -353,15 +352,10 @@ def selectify(mexps: list[list], gid: int = GID) -> tuple[str, list]:
 				where += f" AND n{n}.{col2}{oeql2}%s"
 				params.append(miad[VAL2])
 
-		if AMT not in (col2, lastcol2) and (miad[VAL1] is None or col1==BID) and miad[VAL2] is None:
-			n+=1
-			select 	+= f", string_agg(DISTINCT ' ' || n{n}.rid || '==' || n{n}.amt, '')"
-			join += f" LEFT JOIN {DB['table_numb']} n{n} ON n{aa[-1]}.bid=n{n}.bid"
-
 	return f"SELECT CONCAT({select}) AS raq {join} WHERE {where} GROUP BY {groupby}", params
 
 
-def sqlify(mokens: list[list], gid: int = GID) -> tuple[str, list]:
+def sqlify(mokens: list[list], gid: int = DEFGID) -> tuple[str, list]:
 	selects, params = [], []
 	for s, mexps in enumerate(mokens):
 		qry_select, qry_params = selectify(mexps, gid)
@@ -375,8 +369,8 @@ def put (mokens: list[list], gid: int) -> list[list]:
 	if not gid: raise Exception('put gid')
 	if gid not in KEYS: KEYS[gid]={}
 
-	rows = {DB['table_node']:[], DB['table_name']:[], DB['table_numb']:[]}
-	params = {DB['table_node']:[], DB['table_name']:[], DB['table_numb']:[]}
+	rows = []
+	params = []
 
 	# NEW KEY NAMES
 
@@ -400,12 +394,12 @@ def put (mokens: list[list], gid: int) -> list[list]:
 
 	if newkeys:
 		# Unique check keys
-		krows=db.selectin({'gid':[gid], 'rid':[I['key']], f'LOWER({ALP})':newkeys.keys()}, DB['table_name'])
+		krows=db.selectin({'gid':[gid], 'rid':[I['key']], f'LOWER({ALP})':newkeys.keys()}, DB['table_meme'])
 		for row in krows:
-			alp=row[3]
+			alp=row[oALP]
 			alpl = alp.lower()
 			if newkeys.get(alpl):
-				if int(row[1]) == int(newkeys[alpl]) or newkeys[alpl] is None: newkeys.pop(alpl, 0)
+				if int(row[oBID]) == int(newkeys[alpl]) or newkeys[alpl] is None: newkeys.pop(alpl, 0)
 				else: raise Exception(f"Duplicate key {alp} for new {newkeys[alpl]} and old {row[1]}")
 
 		# Write new keys
@@ -420,8 +414,8 @@ def put (mokens: list[list], gid: int) -> list[list]:
 			elif aid<=I['cor']: raise Exception(f'Invalid id number {aid}')
 
 			KEYS[gid][alp]=aid
-			rows[DB['table_name']].append("(%s,%s,%s,%s)")
-			params[DB['table_name']].extend([gid, aid, I['key'], alp])
+			rows.append(PLACEHOLDER)
+			params.extend([gid, aid, I['key'], None, None, alp])
 
 		# Swap missing keys for new IDs
 		identify(mokens, gid)
@@ -435,21 +429,23 @@ def put (mokens: list[list], gid: int) -> list[list]:
 					continue
 				else: bid = db.seqinc(DB['table_seqn'])
 
-			tbl = OPERS[miad[OPER]][TABL] or DB['table_node']
-			params[tbl].extend([gid, bid, miad[VAL1], miad[VAL2]])
-			rows[tbl].append('(%s,%s,%s,%s)')
+			aid, amt, alp = None, None, None
 
-	sqls=[]
-	for tbl in params:
-		if params[tbl]: sqls.append(f"INSERT INTO {tbl} VALUES " + ','.join(rows[tbl]) + " ON CONFLICT DO NOTHING")
-		else: sqls.append(None)
+			if OPERS[miad[OPER]][COL2] == AID: aid = miad[VAL2]
+			elif OPERS[miad[OPER]][COL2] == AMT: amt = miad[VAL2]
+			elif OPERS[miad[OPER]][COL2] == ALP: alp = miad[VAL2]
+			else: raise Exception('put col')
 
-	db.inserts(sqls, params.values())
+			rows.append(PLACEHOLDER)
+			params.extend([gid, bid, miad[VAL1], aid, amt, alp])
+
+	sqls=f"INSERT INTO {DB['table_meme']} VALUES " + ','.join(rows) + " ON CONFLICT DO NOTHING"
+	db.insert(sqls, params)
 
 	return mokens
 
 
-def get(mokens: list[list], gid: int = GID) -> list[list]:
+def get(mokens: list[list], gid: int = DEFGID) -> list[list]:
 	sql, params = sqlify(mokens, gid)
 	res = db.select(sql, params)
 
@@ -457,23 +453,23 @@ def get(mokens: list[list], gid: int = GID) -> list[list]:
 
 	responsestr=''
 	for row in res: responsestr+=row[0]
+	responsestr = re.sub(r'(\d)a""', r'\1', responsestr).replace('""', '')
 	#print(responsestr)
 	return decode(responsestr)
 
 
 # Input: Memelang query string
 # Output: Integer count of resulting memes
-def count(mokens: list[list], gid: int = GID) -> int:
+def count(mokens: list[list], gid: int = DEFGID) -> int:
 	sql, params = sqlify(mokens, gid)
 	return len(db.select(sql, params))
 
 
-def deljob(j: str, mokens: list[list], gid: int = GID) -> int:
+def deljob(j: str, mokens: list[list], gid: int = DEFGID) -> int:
 	if not gid: raise Exception('deljob gid')
 
 	fields = {}
 	values = {AID:None, RID:None, BID:None}
-	tbl = DB['table_node']
 	col2 = AID
 	sqls, params = [], []
 
@@ -489,36 +485,32 @@ def deljob(j: str, mokens: list[list], gid: int = GID) -> int:
 
 		if miad[VAL2]:
 			if values[AID] is not None: raise Exception('deljob double aid value')
-			if OPERS[miad[OPER]][TABL]: tbl = OPERS[miad[OPER]][TABL]
 			col2 = OPERS[miad[OPER]][COL2]
 			values[AID]=miad[VAL2]
 
 	if j == 'delg':
 		fields = {AID:False, RID:False, BID:False}
-		for tbl in (DB['table_node'], DB['table_numb'], DB['table_name']):
-			sqls.append(f"DELETE FROM {tbl} WHERE gid=%s")
-			params.append([gid])
+		sqls.append(f"DELETE FROM {DB['table_meme']} WHERE gid=%s")
+		params.append([gid])
 
 	elif j == 'dela':	
 		fields = {AID:True, RID:False, BID:False}
-		sqls.append(f"DELETE FROM {DB['table_node']} WHERE gid=%s AND aid=%s")
+		sqls.append(f"DELETE FROM {DB['table_meme']} WHERE gid=%s AND aid=%s")
 		params.append([gid, values[AID]])
 
 	elif j == 'delr':
 		fields = {AID:False, RID:True, BID:False}
-		for tbl in (DB['table_node'], DB['table_numb'], DB['table_name']):
-			sqls.append(f"DELETE FROM {tbl} WHERE gid=%s AND rid=%s")
-			params.append([gid, values[RID]])
+		sqls.append(f"DELETE FROM {DB['table_meme']} WHERE gid=%s AND rid=%s")
+		params.append([gid, values[RID]])
 		
 	elif j == 'delb':
 		fields = {AID:False, RID:False, BID:True}
-		for tbl in (DB['table_node'], DB['table_numb'], DB['table_name']):
-			sqls.append(f"DELETE FROM {tbl} WHERE gid=%s AND bid=%s")
-			params.append([gid, values[BID]])
+		sqls.append(f"DELETE FROM {DB['table_meme']} WHERE gid=%s AND bid=%s")
+		params.append([gid, values[BID]])
 
 	elif j == 'delarb':
 		fields = {AID:True, RID:True, BID:True}
-		sqls.append(f"DELETE FROM {tbl} WHERE gid=%s AND {col2}=%s AND rid=%s AND bid=%s")
+		sqls.append(f"DELETE FROM {DB['table_meme']} WHERE gid=%s AND {col2}=%s AND rid=%s AND bid=%s")
 		params.append([gid, values[AID], values[RID], values[BID]])
 	
 	else: raise Exception(f'deljob unknown')
@@ -568,7 +560,7 @@ def query(memestr: str = None) -> str:
 	job=jobify(memestr)
 	if job['*']: mokens.pop(0)
 	if not job['j']: job['j'] = 'get'
-	if not job['g']: job['g'] = GID
+	if not job['g']: job['g'] = DEFGID
 
 	if job['j'] == 'put': return keyencode(put(mokens, job['g']), job['g'])
 	else:
@@ -613,13 +605,13 @@ def cli_query(memestr: str):
 	print()
 
 def cli_put(memestr: str):
-	print(keyencode(put(decode(memestr), GID), GID))
+	print(keyencode(put(decode(memestr), DEFGID), DEFGID))
 	print()
 	print()
 
 # Read a meme file and save it to DB
 def cli_putfile(file_path):
-	with open(file_path, 'r', encoding='utf-8') as f: print(keyencode(put(decode(f.read()), GID), GID))
+	with open(file_path, 'r', encoding='utf-8') as f: print(keyencode(put(decode(f.read()), DEFGID), DEFGID))
 	
 
 # Test various Memelang queries
@@ -634,16 +626,16 @@ def cli_qrytest():
 		'child= parent=',
 		'=JohnAdams',
 		'parent=JOHNadams',
-		'child[birthee',
-		'child[birthee =',
-		'child[birthee year>',
+		'child[eventee',
+		'child[eventee =',
+		'child[eventee year>',
 		'year==1732',
 		'year=1732.0',
 		'year>1700',
 		'year<=1800',
 		'year<=1800',
 		'year>=1700',
-		'child[birthee year>=1700',
+		'child[eventee year>=1700',
 	]
 	errcnt=0
 
@@ -698,13 +690,13 @@ def cli_tableadd():
 	commands = [
 		f"CREATE SEQUENCE {DB['table_seqn']} AS BIGINT START {corp} INCREMENT 1 CACHE 1;",
 		f"SELECT setval('{DB['table_seqn']}', {corp}, false);",
-		f"CREATE TABLE {DB['table_node']} (gid BIGINT, bid BIGINT, rid BIGINT, aid BIGINT, PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_node']}_rid_idx ON {DB['table_node']} (rid); CREATE INDEX {DB['table_node']}_aid_idx ON {DB['table_node']} (aid);",
-		f"CREATE TABLE {DB['table_numb']} (gid BIGINT, bid BIGINT, rid BIGINT, amt DOUBLE PRECISION, PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_numb']}_rid_idx ON {DB['table_numb']} (rid); CREATE INDEX {DB['table_numb']}_amt_idx ON {DB['table_numb']} (amt);",
-		f"CREATE TABLE {DB['table_name']} (gid BIGINT, bid BIGINT, rid BIGINT, alp VARCHAR(511), PRIMARY KEY (gid,bid,rid)); CREATE INDEX {DB['table_name']}_rid_idx ON {DB['table_name']} (rid); CREATE INDEX {DB['table_name']}_alp_idx ON {DB['table_name']} (LOWER(alp));",
+		f"CREATE TABLE {DB['table_meme']} (gid BIGINT, bid BIGINT, rid BIGINT, aid BIGINT, amt DOUBLE PRECISION, alp VARCHAR(511), PRIMARY KEY (gid,bid,rid));",
+		f"CREATE INDEX {DB['table_meme']}_rid_idx ON {DB['table_meme']} (rid);",
+		f"CREATE INDEX {DB['table_meme']}_aid_idx ON {DB['table_meme']} (aid) WHERE aid IS NOT NULL;",
+		f"CREATE INDEX {DB['table_meme']}_amt_idx ON {DB['table_meme']} (amt) WHERE amt IS NOT NULL;",
+		f"CREATE INDEX {DB['table_meme']}_alp_idx ON {DB['table_meme']} (aalp) WHERE alp IS NOT NULL;",
 		f"GRANT USAGE, UPDATE ON SEQUENCE {DB['table_seqn']} TO {DB['user']};",
-		f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {DB['table_node']} TO {DB['user']};",
-		f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {DB['table_numb']} TO {DB['user']};",
-		f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {DB['table_name']} TO {DB['user']};",
+		f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {DB['table_meme']} TO {DB['user']};",
 	]
 
 	for command in commands: db.psql(command)
@@ -714,9 +706,7 @@ def cli_tableadd():
 def cli_tabledel():
 	commands = [
 		f"DROP SEQUENCE {DB['table_seqn']};",
-		f"DROP TABLE IF EXISTS {DB['table_node']};",
-		f"DROP TABLE IF EXISTS {DB['table_numb']};",
-		f"DROP TABLE IF EXISTS {DB['table_name']};",
+		f"DROP TABLE IF EXISTS {DB['table_meme']};",
 	]
 	for command in commands: db.psql(command)
 
